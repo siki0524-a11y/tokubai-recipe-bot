@@ -39,11 +39,12 @@ async function handleMessage(event) {
   if (text === '別のレシピ' || text === '他のレシピ' || text === 'もう一度') {
     if (userState[userId] && userState[userId].items) {
       await reply(event, '🔄 別のレシピを考えています…');
+      // replyTokenは使い切ったのでpushで送る
       const recipe = await getRecipe(userState[userId].items, userState[userId].shown || []);
       if (recipe) {
         userState[userId].shown = [...(userState[userId].shown || []), recipe.name];
-        await reply(event, formatRecipe(recipe));
-        await reply(event, '他にも見たい場合は「別のレシピ」\n食材を変えたい場合は「リセット」と送ってください 🙌');
+        await push(userId, formatRecipe(recipe));
+        await push(userId, '他にも見たい場合は「別のレシピ」\n食材を変えたい場合は「リセット」と送ってください 🙌');
       }
     } else {
       await reply(event, 'まず特売品を教えてください！');
@@ -65,15 +66,17 @@ async function handleMessage(event) {
 
   userState[userId] = { items, shown: [] };
 
+  // まず即座に返信してreplyTokenを消費
   await reply(event, `📝 特売品を受け取りました！\n${items.map(i => `・${i}`).join('\n')}\n\nレシピを考えています🍳`);
 
+  // その後pushメッセージでレシピを送る
   const recipe = await getRecipe(items, []);
   if (recipe) {
     userState[userId].shown = [recipe.name];
-    await reply(event, formatRecipe(recipe));
-    await reply(event, '他にも見たい場合は「別のレシピ」\n食材を変えたい場合は「リセット」と送ってください 🙌');
+    await push(userId, formatRecipe(recipe));
+    await push(userId, '他にも見たい場合は「別のレシピ」\n食材を変えたい場合は「リセット」と送ってください 🙌');
   } else {
-    await reply(event, '申し訳ありません、レシピの取得に失敗しました。もう一度試してみてください。');
+    await push(userId, '申し訳ありません、レシピの取得に失敗しました。もう一度試してみてください。');
   }
 }
 
@@ -143,6 +146,13 @@ ${steps}`;
 
 async function reply(event, text) {
   await client.replyMessage(event.replyToken, {
+    type: 'text',
+    text
+  });
+}
+
+async function push(userId, text) {
+  await client.pushMessage(userId, {
     type: 'text',
     text
   });
