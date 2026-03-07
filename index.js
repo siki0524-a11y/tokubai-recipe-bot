@@ -119,6 +119,11 @@ async function getRecipe(items, shown) {
     });
 
     const data = await res.json();
+    console.log('Claude API response:', JSON.stringify(data).slice(0, 300));
+    if (!data.content) {
+      console.error('No content in response:', JSON.stringify(data));
+      return null;
+    }
     const text = data.content.map(i => i.text || '').join('');
     const clean = text.replace(/```json|```/g, '').trim();
     return JSON.parse(clean);
