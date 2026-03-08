@@ -74,6 +74,16 @@ async function handleMessage(event) {
   if (recipe) {
     userState[userId].shown = [recipe.name];
     await push(userId, formatRecipe(recipe));
+
+    // 余り食材の提案
+    const leftover = await getLeftoverSuggestion(items, recipe.ingredients);
+    if (leftover && leftover.suggestions && leftover.suggestions.length > 0) {
+      const suggText = leftover.suggestions
+        .map(s => `・${s.type}｜${s.name}\n  ${s.desc}`)
+        .join('\n');
+      await push(userId, `🍱 余った食材の活用アイデア\n\n${suggText}`);
+    }
+
     await push(userId, '他にも見たい場合は「別のレシピ」\n食材を変えたい場合は「リセット」と送ってください 🙌');
   } else {
     await push(userId, '申し訳ありません、レシピの取得に失敗しました。もう一度試してみてください。');
@@ -131,6 +141,60 @@ async function getRecipe(items, shown) {
     return JSON.parse(clean);
   } catch (e) {
     console.error('Claude API error:', e);
+    return null;
+  }
+}
+
+
+async function getLeftoverSuggestion(allItems, usedIngredients) {
+  // 使われなかった食材を特定
+  const usedNames = usedIngredients.map(i => i.replace(/[（(].*[)）]/g, '').replace(/\s+\S+$/, '').trim());
+  const leftover = allItems.filter(item => 
+    !usedNames.some(used => used.includes(item) || item.includes(used))
+  );
+  
+  if (leftover.length === 0) return null;
+
+  const prompt = `以下の食材が今日のメインレシピで使われませんでした。
+余り食材: ${leftover.join('、')}
+
+この食材を使った以下のいずれかを1〜2個提案してください：
+- 簡単な副菜・小鉢
+- 汁物・味噌汁
+- 作り置き・ストック方法
+
+必ずJSONのみで返してください（説明文なし）:
+{
+  "suggestions": [
+    {
+      "type": "副菜/汁物/作り置き",
+      "name": "料理名または保存方法",
+      "desc": "一言説明（30字以内）"
+    }
+  ]
+}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    if (!data.content) return null;
+    const text = data.content.map(i => i.text || '').join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    return JSON.parse(clean);
+  } catch (e) {
+    console.error('Leftover API error:', e);
     return null;
   }
 }
