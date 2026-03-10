@@ -11,8 +11,31 @@ const lineConfig = {
 
 const client = new line.Client(lineConfig);
 
-// ユーザーごとの入力状態を管理
+// ユーザーごとの状態管理
+// userState[userId] = {
+//   items: [],          // 今回の特売品
+//   shown: [],          // 今回提案済みレシピ名
+//   lastRecipe: null,   // 最後に提案したレシピ（作った/作らない判定用）
+//   ngFoods: [],        // NG食材リスト（永続）
+//   cookedRecipes: [],  // 作ったレシピ { name, cookedAt }（1ヶ月除外用）
+//   mode: null,         // 'ng_setting' など特殊モード
+// }
 const userState = {};
+
+function getState(userId) {
+  if (!userState[userId]) {
+    userState[userId] = { items: [], shown: [], lastRecipe: null, ngFoods: [], cookedRecipes: [], mode: null };
+  }
+  return userState[userId];
+}
+
+// 1ヶ月以内に作ったレシピ名リストを返す
+function getRecentCooked(state) {
+  const oneMonthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  return state.cookedRecipes
+    .filter(r => r.cookedAt > oneMonthAgo)
+    .map(r => r.name);
+}
 
 app.post('/webhook', line.middleware(lineConfig), async (req, res) => {
   res.json({ status: 'ok' });
@@ -27,24 +50,79 @@ app.post('/webhook', line.middleware(lineConfig), async (req, res) => {
 async function handleMessage(event) {
   const userId = event.source.userId;
   const text = event.message.text.trim();
+  const state = getState(userId);
 
-  // リセットコマンド
+  // NG食材設定モード中
+  if (state.mode === 'ng_setting') {
+    if (text === 'キャンセル') {
+      state.mode = null;
+      await reply(event, 'キャンセルしました。');
+      return;
+    }
+    if (text === 'クリア') {
+      state.ngFoods = [];
+      state.mode = null;
+      await reply(event, 'NG食材をすべて削除しました！');
+      return;
+    }
+    const newNg = text.split(/[\n、,，\s]+/).map(s => s.trim()).filter(s => s.length > 0);
+    state.ngFoods = newNg;
+    state.mode = null;
+    await reply(event, `NG食材を登録しました！\n\n${newNg.map(f => `・${f}`).join('\n')}\n\n変更したいときは「NG食材」と送ってください。`);
+    return;
+  }
+
+  // 作った
+  if (text === '作った' || text === '作りました') {
+    if (state.lastRecipe) {
+      state.cookedRecipes.push({ name: state.lastRecipe, cookedAt: Date.now() });
+      state.lastRecipe = null;
+      await reply(event, 'ありがとうございます！\n1ヶ月間はこのレシピを除外しますね。\nまた特売品を教えてください！');
+    } else {
+      await reply(event, 'レシピがまだ提案されていません。');
+    }
+    return;
+  }
+
+  // 作らなかった
+  if (text === '作らなかった' || text === 'パス') {
+    state.lastRecipe = null;
+    await reply(event, 'わかりました！\n「別のレシピ」で他のレシピを見るか、「リセット」で食材を変えられます。');
+    return;
+  }
+
+  // NG食材の確認・設定
+  if (text === 'NG食材' || text === 'ng' || text === 'NG') {
+    state.mode = 'ng_setting';
+    const current = state.ngFoods.length > 0
+      ? `現在のNG食材：${state.ngFoods.join('、')}\n\n`
+      : '現在NG食材は登録されていません。\n\n';
+    await reply(event, `${current}使いたくない食材を送ってください。\n（複数は「、」か改行で区切ってください）\n\n例：ピーマン、魚、レバー\n\n全部削除する場合は「クリア」\nやめる場合は「キャンセル」`);
+    return;
+  }
+
+  // リセット
   if (text === 'リセット' || text === 'はじめから' || text === 'reset') {
-    userState[userId] = null;
-    await reply(event, '🛒 食材を入力し直しますね！\n\n今日の特売品を教えてください。\n（複数ある場合は改行か「、」で区切ってください）\n\n例：\n鶏もも肉\n大根\n豆腐');
+    state.items = [];
+    state.shown = [];
+    state.lastRecipe = null;
+    state.mode = null;
+    await reply(event, '食材を入力し直しますね！\n\n今日の特売品を教えてください。\n（複数ある場合は改行か「、」で区切ってください）\n\n例：\n鶏もも肉\n大根\n豆腐');
     return;
   }
 
   // 別のレシピ
   if (text === '別のレシピ' || text === '他のレシピ' || text === 'もう一度') {
-    if (userState[userId] && userState[userId].items) {
-      await reply(event, '🔄 別のレシピを考えています…');
-      // replyTokenは使い切ったのでpushで送る
-      const recipe = await getRecipe(userState[userId].items, userState[userId].shown || []);
+    if (state.items && state.items.length > 0) {
+      await reply(event, '別のレシピを考えています…');
+      const recentCooked = getRecentCooked(state);
+      const exclude = [...(state.shown || []), ...recentCooked];
+      const recipe = await getRecipe(state.items, exclude, state.ngFoods);
       if (recipe) {
-        userState[userId].shown = [...(userState[userId].shown || []), recipe.name];
+        state.shown = [...(state.shown || []), recipe.name];
+        state.lastRecipe = recipe.name;
         await push(userId, formatRecipe(recipe));
-        await push(userId, '他にも見たい場合は「別のレシピ」\n食材を変えたい場合は「リセット」と送ってください 🙌');
+        await push(userId, '作りましたか？\n「作った」→ 1ヶ月このレシピを除外\n「作らなかった」→ スキップ\n「別のレシピ」→ 他のレシピを見る\n「リセット」→ 食材を変える');
       }
     } else {
       await reply(event, 'まず特売品を教えてください！');
@@ -60,19 +138,22 @@ async function handleMessage(event) {
     .slice(0, 5);
 
   if (items.length === 0) {
-    await reply(event, '食材を入力してください 😊\n\n例：鶏もも肉、大根、豆腐');
+    await reply(event, '食材を入力してください\n\n例：鶏もも肉、大根、豆腐');
     return;
   }
 
-  userState[userId] = { items, shown: [] };
+  state.items = items;
+  state.shown = [];
+  state.lastRecipe = null;
 
-  // まず即座に返信してreplyTokenを消費
-  await reply(event, `📝 特売品を受け取りました！\n${items.map(i => `・${i}`).join('\n')}\n\nレシピを考えています🍳`);
+  const ngText = state.ngFoods.length > 0 ? `\nNG食材：${state.ngFoods.join('、')}` : '';
+  await reply(event, `特売品を受け取りました！\n${items.map(i => `・${i}`).join('\n')}${ngText}\n\nレシピを考えています`);
 
-  // その後pushメッセージでレシピを送る
-  const recipe = await getRecipe(items, []);
+  const recentCooked = getRecentCooked(state);
+  const recipe = await getRecipe(items, recentCooked, state.ngFoods);
   if (recipe) {
-    userState[userId].shown = [recipe.name];
+    state.shown = [recipe.name];
+    state.lastRecipe = recipe.name;
     await push(userId, formatRecipe(recipe));
 
     // 余り食材の提案
@@ -81,18 +162,21 @@ async function handleMessage(event) {
       const suggText = leftover.suggestions
         .map(s => `・${s.type}｜${s.name}\n  ${s.desc}`)
         .join('\n');
-      await push(userId, `🍱 余った食材の活用アイデア\n\n${suggText}`);
+      await push(userId, `余った食材の活用アイデア\n\n${suggText}`);
     }
 
-    await push(userId, '他にも見たい場合は「別のレシピ」\n食材を変えたい場合は「リセット」と送ってください 🙌');
+    await push(userId, '作りましたか？\n「作った」→ 1ヶ月このレシピを除外\n「作らなかった」→ スキップ\n「別のレシピ」→ 他のレシピを見る\n「リセット」→ 食材を変える');
   } else {
     await push(userId, '申し訳ありません、レシピの取得に失敗しました。もう一度試してみてください。');
   }
 }
 
-async function getRecipe(items, shown) {
-  const excludeText = shown.length > 0
-    ? `\n- 以下は提案済みなので除外: 【${shown.join('、')}】`
+async function getRecipe(items, exclude, ngFoods) {
+  const excludeText = exclude.length > 0
+    ? `\n- 以下は除外（提案済み or 最近作った）: 【${exclude.join('、')}】`
+    : '';
+  const ngText = ngFoods && ngFoods.length > 0
+    ? `\n- 以下のNG食材は絶対に使わないこと: 【${ngFoods.join('、')}】`
     : '';
 
   const prompt = `以下の特売食材を使った夕食レシピを1品提案してください。
@@ -104,7 +188,7 @@ async function getRecipe(items, shown) {
 - 特売食材＋調味料など家にある基本的なもので作れるレシピを優先
 - 特別な食材や珍しい調味料が必要なレシピは避ける
 - 食材の組み合わせが料理として自然で美味しそうになるよう工夫すること
-- どうしても合わない食材だけ除外してOK${excludeText}
+- どうしても合わない食材だけ除外してOK${excludeText}${ngText}
 
 必ずJSONのみで返してください（説明文なし）:
 {
@@ -145,14 +229,12 @@ async function getRecipe(items, shown) {
   }
 }
 
-
 async function getLeftoverSuggestion(allItems, usedIngredients) {
-  // 使われなかった食材を特定
   const usedNames = usedIngredients.map(i => i.replace(/[（(].*[)）]/g, '').replace(/\s+\S+$/, '').trim());
-  const leftover = allItems.filter(item => 
+  const leftover = allItems.filter(item =>
     !usedNames.some(used => used.includes(item) || item.includes(used))
   );
-  
+
   if (leftover.length === 0) return null;
 
   const prompt = `以下の食材が今日のメインレシピで使われませんでした。
@@ -203,10 +285,10 @@ function formatRecipe(recipe) {
   const ingredients = recipe.ingredients.map(i => `・${i}`).join('\n');
   const steps = recipe.steps.map((s, i) => `${i + 1}. ${s}`).join('\n');
 
-  return `🍽️ *${recipe.name}*
-⏱ ${recipe.time}
+  return `【${recipe.name}】
+時間: ${recipe.time}
 
-💡 ${recipe.desc}
+${recipe.desc}
 
 【材料】
 ${ingredients}
@@ -230,7 +312,7 @@ async function push(userId, text) {
 }
 
 // ヘルスチェック
-app.get('/', (req, res) => res.send('今日の特売レシピBot 動作中 🍳'));
+app.get('/', (req, res) => res.send('今日の特売レシピBot 動作中'));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
