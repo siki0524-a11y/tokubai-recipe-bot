@@ -107,8 +107,8 @@ async function handleMessage(event) {
   }
 
   // そのまま使う（ウェルカムメッセージから）
-  if (text === 'そのまま使う') {
-    await reply(event, '了解です！\n今日の特売品を教えてください。\n（複数ある場合は改行か「、」で区切ってください）\n\n例：\n鶏もも肉\n大根\n豆腐');
+  if (text === 'そのまま使う' || text === '特売品入力モード') {
+    await reply(event, '今日の特売品を教えてください！\n（複数ある場合は改行か「、」で区切ってください）\n\n例：鶏もも肉、大根、豆腐');
     return;
   }
 
@@ -347,5 +347,92 @@ async function push(userId, text, quickReply = null) {
 // ヘルスチェック
 app.get('/', (req, res) => res.send('今日の特売レシピBot 動作中'));
 
+// ============================================================
+// リッチメニュー自動セットアップ
+// ============================================================
+async function setupRichMenu() {
+  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  };
+
+  try {
+    // 既存のリッチメニューを全削除
+    const listRes = await fetch('https://api.line.me/v2/bot/richmenu/list', { headers });
+    const listData = await listRes.json();
+    if (listData.richmenus) {
+      for (const menu of listData.richmenus) {
+        await fetch(`https://api.line.me/v2/bot/richmenu/${menu.richMenuId}`, {
+          method: 'DELETE', headers
+        });
+      }
+    }
+
+    // リッチメニュー作成
+    const menuRes = await fetch('https://api.line.me/v2/bot/richmenu', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        size: { width: 2500, height: 1686 },
+        selected: true,
+        name: '特売レシピメニュー',
+        chatBarText: 'メニューを開く',
+        areas: [
+          // 上段左：特売品を入力
+          { bounds: { x: 0,    y: 0,    width: 833, height: 843 }, action: { type: 'message', text: '特売品入力モード' } },
+          // 上段中：NG食材
+          { bounds: { x: 833,  y: 0,    width: 834, height: 843 }, action: { type: 'message', text: 'NG食材' } },
+          // 上段右：別のレシピ
+          { bounds: { x: 1667, y: 0,    width: 833, height: 843 }, action: { type: 'message', text: '別のレシピ' } },
+          // 下段左：作った
+          { bounds: { x: 0,    y: 843,  width: 833, height: 843 }, action: { type: 'message', text: '作った' } },
+          // 下段中：作らなかった
+          { bounds: { x: 833,  y: 843,  width: 834, height: 843 }, action: { type: 'message', text: '作らなかった' } },
+          // 下段右：リセット
+          { bounds: { x: 1667, y: 843,  width: 833, height: 843 }, action: { type: 'message', text: 'リセット' } },
+        ]
+      })
+    });
+    const menuData = await menuRes.json();
+    const richMenuId = menuData.richMenuId;
+    console.log('リッチメニュー作成:', richMenuId);
+
+    // 画像をアップロード
+    const fs = require('fs');
+    const path = require('path');
+    const imgPath = path.join(__dirname, 'richmenu.png');
+
+    if (fs.existsSync(imgPath)) {
+      const imgBuffer = fs.readFileSync(imgPath);
+      const imgRes = await fetch(`https://api-data.line.me/v2/bot/richmenu/${richMenuId}/content`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'image/png',
+          'Authorization': `Bearer ${token}`
+        },
+        body: imgBuffer
+      });
+      console.log('画像アップロード:', imgRes.status);
+    } else {
+      console.warn('richmenu.png が見つかりません。画像なしで設定します。');
+    }
+
+    // デフォルトに設定
+    await fetch(`https://api.line.me/v2/bot/user/all/richmenu/${richMenuId}`, {
+      method: 'POST', headers
+    });
+    console.log('リッチメニュー設定完了！');
+
+  } catch (e) {
+    console.error('リッチメニュー設定エラー:', e);
+  }
+}
+
+// 特売品入力モードのハンドリング追加
+// ※ handleMessage内の食材入力処理の前に「特売品入力モード」を除外
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, async () => {
+  console.log(`Server running on port ${PORT}`);
+  await setupRichMenu();
+});
