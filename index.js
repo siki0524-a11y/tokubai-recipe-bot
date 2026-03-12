@@ -44,6 +44,21 @@ app.post('/webhook', line.middleware(lineConfig), async (req, res) => {
     if (event.type === 'message' && event.message.type === 'text') {
       await handleMessage(event);
     }
+    // 友だち追加時のウェルカムメッセージ
+    if (event.type === 'follow') {
+      await client.pushMessage(event.source.userId, [
+        {
+          type: 'text',
+          text: 'はじめまして！\n今日の特売レシピBotです🛒\n\nスーパーの特売品を送るだけで、今夜の夕食レシピを提案します！\n\nまず、使いたくない食材はありますか？',
+          quickReply: {
+            items: [
+              { type: 'action', action: { type: 'message', label: '🚫 NG食材を設定する', text: 'NG食材' } },
+              { type: 'action', action: { type: 'message', label: '✅ そのまま使う', text: 'そのまま使う' } },
+            ]
+          }
+        }
+      ]);
+    }
   }
 });
 
@@ -91,6 +106,12 @@ async function handleMessage(event) {
     return;
   }
 
+  // そのまま使う（ウェルカムメッセージから）
+  if (text === 'そのまま使う') {
+    await reply(event, '了解です！\n今日の特売品を教えてください。\n（複数ある場合は改行か「、」で区切ってください）\n\n例：\n鶏もも肉\n大根\n豆腐');
+    return;
+  }
+
   // NG食材の確認・設定
   if (text === 'NG食材' || text === 'ng' || text === 'NG') {
     state.mode = 'ng_setting';
@@ -107,7 +128,11 @@ async function handleMessage(event) {
     state.shown = [];
     state.lastRecipe = null;
     state.mode = null;
-    await reply(event, '食材を入力し直しますね！\n\n今日の特売品を教えてください。\n（複数ある場合は改行か「、」で区切ってください）\n\n例：\n鶏もも肉\n大根\n豆腐');
+    await reply(event, '食材を入力し直しますね！\n\n今日の特売品を教えてください。\nNG食材を変更したい場合はボタンから。', {
+      items: [
+        { type: 'action', action: { type: 'message', label: '🚫 NG食材を変更する', text: 'NG食材' } },
+      ]
+    });
     return;
   }
 
