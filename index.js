@@ -122,7 +122,7 @@ async function handleMessage(event) {
         state.shown = [...(state.shown || []), recipe.name];
         state.lastRecipe = recipe.name;
         await push(userId, formatRecipe(recipe));
-        await push(userId, '作りましたか？\n「作った」→ 1ヶ月このレシピを除外\n「作らなかった」→ スキップ\n「別のレシピ」→ 他のレシピを見る\n「リセット」→ 食材を変える');
+        await push(userId, '作りましたか？', recipeQuickReply);
       }
     } else {
       await reply(event, 'まず特売品を教えてください！');
@@ -165,7 +165,7 @@ async function handleMessage(event) {
       await push(userId, `余った食材の活用アイデア\n\n${suggText}`);
     }
 
-    await push(userId, '作りましたか？\n「作った」→ 1ヶ月このレシピを除外\n「作らなかった」→ スキップ\n「別のレシピ」→ 他のレシピを見る\n「リセット」→ 食材を変える');
+    await push(userId, '作りましたか？', recipeQuickReply);
   } else {
     await push(userId, '申し訳ありません、レシピの取得に失敗しました。もう一度試してみてください。');
   }
@@ -297,18 +297,26 @@ ${ingredients}
 ${steps}`;
 }
 
-async function reply(event, text) {
-  await client.replyMessage(event.replyToken, {
-    type: 'text',
-    text
-  });
+// クイックリプライボタンの定義
+const recipeQuickReply = {
+  items: [
+    { type: 'action', action: { type: 'message', label: '✅ 作った', text: '作った' } },
+    { type: 'action', action: { type: 'message', label: '⏭ 作らなかった', text: '作らなかった' } },
+    { type: 'action', action: { type: 'message', label: '🔄 別のレシピ', text: '別のレシピ' } },
+    { type: 'action', action: { type: 'message', label: '🛒 リセット', text: 'リセット' } },
+  ]
+};
+
+async function reply(event, text, quickReply = null) {
+  const message = { type: 'text', text };
+  if (quickReply) message.quickReply = quickReply;
+  await client.replyMessage(event.replyToken, message);
 }
 
-async function push(userId, text) {
-  await client.pushMessage(userId, {
-    type: 'text',
-    text
-  });
+async function push(userId, text, quickReply = null) {
+  const message = { type: 'text', text };
+  if (quickReply) message.quickReply = quickReply;
+  await client.pushMessage(userId, message);
 }
 
 // ヘルスチェック
