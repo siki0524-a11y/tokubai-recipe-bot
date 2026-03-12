@@ -401,14 +401,14 @@ async function setupRichMenu() {
     // 画像をアップロード
     const fs = require('fs');
     const path = require('path');
-    const imgPath = path.join(__dirname, 'richmenu.png');
+    const imgPath = path.join(__dirname, 'richmenu.jpg');
 
     if (fs.existsSync(imgPath)) {
       const imgBuffer = fs.readFileSync(imgPath);
       const imgRes = await fetch(`https://api-data.line.me/v2/bot/richmenu/${richMenuId}/content`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'image/png',
+          'Content-Type': 'image/jpeg',
           'Authorization': `Bearer ${token}`
         },
         body: imgBuffer
