@@ -21,12 +21,51 @@ const client = new line.Client(lineConfig);
 //   mode: null,         // 'ng_setting' など特殊モード
 // }
 const userState = {};
+const fs = require('fs');
+const DATA_FILE = './userdata.json';
+
+// 起動時にファイルからデータを読み込む
+function loadData() {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const raw = fs.readFileSync(DATA_FILE, 'utf8');
+      const saved = JSON.parse(raw);
+      Object.assign(userState, saved);
+      console.log('ユーザーデータ読み込み完了');
+    }
+  } catch (e) {
+    console.error('データ読み込みエラー:', e);
+  }
+}
+
+// NG食材・作ったレシピをファイルに保存
+function saveData() {
+  try {
+    const toSave = {};
+    for (const [uid, state] of Object.entries(userState)) {
+      toSave[uid] = {
+        ngFoods: state.ngFoods || [],
+        cookedRecipes: state.cookedRecipes || [],
+      };
+    }
+    fs.writeFileSync(DATA_FILE, JSON.stringify(toSave), 'utf8');
+  } catch (e) {
+    console.error('データ保存エラー:', e);
+  }
+}
 
 function getState(userId) {
   if (!userState[userId]) {
     userState[userId] = { items: [], shown: [], lastRecipe: null, ngFoods: [], cookedRecipes: [], mode: null };
   }
-  return userState[userId];
+  const s = userState[userId];
+  if (!s.items) s.items = [];
+  if (!s.shown) s.shown = [];
+  if (s.lastRecipe === undefined) s.lastRecipe = null;
+  if (!s.ngFoods) s.ngFoods = [];
+  if (!s.cookedRecipes) s.cookedRecipes = [];
+  if (!s.mode) s.mode = null;
+  return s;
 }
 
 // 1ヶ月以内に作ったレシピ名リストを返す
@@ -77,12 +116,14 @@ async function handleMessage(event) {
     if (text === 'クリア') {
       state.ngFoods = [];
       state.mode = null;
+      saveData();
       await reply(event, 'NG食材をすべて削除しました！');
       return;
     }
     const newNg = text.split(/[\n、,，\s]+/).map(s => s.trim()).filter(s => s.length > 0);
     state.ngFoods = newNg;
     state.mode = null;
+    saveData();
     await reply(event, `NG食材を登録しました！\n\n${newNg.map(f => `・${f}`).join('\n')}\n\n変更したいときは「NG食材」と送ってください。`);
     return;
   }
@@ -92,6 +133,7 @@ async function handleMessage(event) {
     if (state.lastRecipe) {
       state.cookedRecipes.push({ name: state.lastRecipe, cookedAt: Date.now() });
       state.lastRecipe = null;
+      saveData();
       await reply(event, 'ありがとうございます！\n1ヶ月間はこのレシピを除外しますね。\nまた特売品を教えてください！');
     } else {
       await reply(event, 'レシピがまだ提案されていません。');
@@ -156,6 +198,10 @@ async function handleMessage(event) {
   }
 
   // 食材入力として処理
+  // システムコマンドは除外
+  const systemCommands = ['特売品入力モード', 'NG食材', 'NG', 'ng', 'リセット', 'はじめから', 'reset', '別のレシピ', '他のレシピ', 'もう一度', '作った', '作りました', '作らなかった', 'パス', 'そのまま使う', 'キャンセル', 'クリア'];
+  if (systemCommands.includes(text)) return;
+
   const items = text
     .split(/[\n、,，\s]+/)
     .map(s => s.trim())
@@ -429,10 +475,9 @@ async function setupRichMenu() {
   }
 }
 
-// 特売品入力モードのハンドリング追加
-// ※ handleMessage内の食材入力処理の前に「特売品入力モード」を除外
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
+  loadData();
   console.log(`Server running on port ${PORT}`);
   await setupRichMenu();
 });
