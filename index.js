@@ -1,215 +1,480 @@
-const express = require('express');
-const line = require('@line/bot-sdk');
-const fetch = require('node-fetch');
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>今日の特売レシピ</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --orange: #F4651E;
+    --orange-dark: #e8430a;
+    --orange-light: #FFF0E8;
+    --dark: #1a1a1a;
+    --gray: #f5f5f5;
+    --border: #eee;
+    --text: #333;
+    --sub: #888;
+  }
 
-const app = express();
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
-const lineConfig = {
-  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
-  channelSecret: process.env.LINE_CHANNEL_SECRET,
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: #f0f0f0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* ヘッダー */
+  .header {
+    width: 100%;
+    background: linear-gradient(135deg, var(--orange), var(--orange-dark));
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 2px 12px rgba(244,101,30,0.3);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-icon {
+    width: 38px; height: 38px;
+    background: white;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .header-title { font-size: 16px; font-weight: 900; color: white; }
+  .header-sub { font-size: 11px; color: rgba(255,255,255,0.8); }
+  .header-right { margin-left: auto; }
+  .ng-btn {
+    background: rgba(255,255,255,0.2);
+    border: 1.5px solid rgba(255,255,255,0.4);
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+  .ng-btn:hover { background: rgba(255,255,255,0.3); }
+
+  /* メインレイアウト */
+  .main {
+    width: 100%;
+    max-width: 680px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0 0 100px;
+  }
+
+  /* チャットエリア */
+  .chat-area {
+    flex: 1;
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: calc(100vh - 180px);
+  }
+
+  /* メッセージ */
+  .msg {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .msg.user { flex-direction: row-reverse; }
+
+  .msg-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  .msg-avatar.bot { background: var(--orange); }
+
+  .bubble {
+    max-width: 75%;
+    padding: 12px 16px;
+    border-radius: 18px;
+    font-size: 13px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .bubble.bot {
+    background: white;
+    color: var(--dark);
+    border-radius: 4px 18px 18px 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .bubble.user {
+    background: var(--orange);
+    color: white;
+    border-radius: 18px 18px 4px 18px;
+  }
+
+  /* タイピングインジケーター */
+  .typing {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 14px 18px;
+    background: white;
+    border-radius: 4px 18px 18px 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    width: fit-content;
+  }
+  .typing span {
+    width: 7px; height: 7px;
+    background: var(--orange);
+    border-radius: 50%;
+    animation: bounce 1.2s infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-6px); }
+  }
+
+  /* クイックリプライボタン */
+  .quick-replies {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+    margin-left: 40px;
+  }
+  .qr-btn {
+    background: white;
+    border: 1.5px solid var(--orange);
+    color: var(--orange);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    box-shadow: 0 2px 6px rgba(244,101,30,0.1);
+  }
+  .qr-btn:hover {
+    background: var(--orange);
+    color: white;
+  }
+
+  /* 入力エリア */
+  .input-area {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    max-width: 680px;
+    background: white;
+    border-top: 1px solid var(--border);
+    padding: 12px 16px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
+  }
+  .input-wrap {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  .input-box {
+    flex: 1;
+    border: 1.5px solid var(--border);
+    border-radius: 22px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: none;
+    min-height: 44px;
+    max-height: 120px;
+    outline: none;
+    transition: border-color 0.15s;
+    line-height: 1.5;
+  }
+  .input-box:focus { border-color: var(--orange); }
+  .send-btn {
+    width: 44px; height: 44px;
+    background: var(--orange);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: transform 0.15s, background 0.15s;
+    box-shadow: 0 4px 12px rgba(244,101,30,0.35);
+  }
+  .send-btn:hover { transform: scale(1.08); background: var(--orange-dark); }
+  .send-btn:disabled { opacity: 0.4; cursor: default; transform: none; }
+
+  /* NGモーダル */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200;
+    padding: 20px;
+    display: none;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white;
+    border-radius: 20px;
+    padding: 24px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+  .modal h3 { font-size: 16px; font-weight: 900; margin-bottom: 6px; }
+  .modal p { font-size: 12px; color: var(--sub); margin-bottom: 16px; line-height: 1.7; }
+  .modal textarea {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 13px;
+    font-family: inherit;
+    resize: none;
+    height: 80px;
+    outline: none;
+    margin-bottom: 14px;
+  }
+  .modal textarea:focus { border-color: var(--orange); }
+  .modal-current {
+    background: var(--orange-light);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--orange);
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+  .modal-btns { display: flex; gap: 10px; }
+  .modal-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.15s;
+  }
+  .modal-btn.cancel { background: var(--gray); color: var(--dark); }
+  .modal-btn.save { background: var(--orange); color: white; }
+  .modal-btn:hover { opacity: 0.85; }
+
+  /* ウェルカム */
+  .welcome {
+    text-align: center;
+    padding: 40px 20px;
+  }
+  .welcome-icon { font-size: 56px; margin-bottom: 16px; }
+  .welcome h2 { font-size: 20px; font-weight: 900; margin-bottom: 8px; color: var(--dark); }
+  .welcome p { font-size: 13px; color: var(--sub); line-height: 1.9; margin-bottom: 24px; }
+  .welcome-start {
+    background: var(--orange);
+    color: white;
+    border: none;
+    padding: 14px 32px;
+    border-radius: 999px;
+    font-size: 15px;
+    font-weight: 900;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(244,101,30,0.35);
+    transition: transform 0.15s;
+  }
+  .welcome-start:hover { transform: translateY(-2px); }
+</style>
+</head>
+<body>
+
+<!-- ヘッダー -->
+<div class="header">
+  <div class="header-icon">🛒</div>
+  <div>
+    <div class="header-title">今日の特売レシピ</div>
+    <div class="header-sub">特売品を入力するだけで今夜の献立を提案</div>
+  </div>
+  <div class="header-right">
+    <button class="ng-btn" onclick="openNgModal()">🚫 NG食材</button>
+  </div>
+</div>
+
+<!-- メイン -->
+<div class="main">
+  <div class="chat-area" id="chatArea">
+    <div class="welcome" id="welcome">
+      <div class="welcome-icon">🍳</div>
+      <h2>今日の特売品は何ですか？</h2>
+      <p>スーパーの特売品を入力するだけで<br>AIが今夜のレシピを1品提案します。<br>余った食材の活用アイデアもお知らせします。</p>
+      <button class="welcome-start" onclick="startChat()">特売品を入力する</button>
+    </div>
+  </div>
+
+  <!-- 入力エリア -->
+  <div class="input-area" id="inputArea" style="display:none;">
+    <div class="input-wrap">
+      <textarea class="input-box" id="inputBox" placeholder="例：鶏もも肉、大根、豆腐" rows="1"
+        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">↑</button>
+    </div>
+  </div>
+</div>
+
+<!-- NGモーダル -->
+<div class="modal-overlay" id="ngModal">
+  <div class="modal">
+    <h3>🚫 NG食材の設定</h3>
+    <p>使いたくない食材を入力してください。<br>「、」か改行で区切ると複数登録できます。</p>
+    <div class="modal-current" id="ngCurrent" style="display:none;"></div>
+    <textarea id="ngInput" placeholder="例：ピーマン、魚、レバー"></textarea>
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeNgModal()">キャンセル</button>
+      <button class="modal-btn save" onclick="saveNg()">登録する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 状態管理
+const state = {
+  items: [],
+  shown: [],
+  lastRecipe: null,
+  ngFoods: JSON.parse(localStorage.getItem('ngFoods') || '[]'),
+  cookedRecipes: JSON.parse(localStorage.getItem('cookedRecipes') || '[]'),
+  waiting: false,
 };
 
-const client = new line.Client(lineConfig);
-
-// ユーザーごとの状態管理
-// userState[userId] = {
-//   items: [],          // 今回の特売品
-//   shown: [],          // 今回提案済みレシピ名
-//   lastRecipe: null,   // 最後に提案したレシピ（作った/作らない判定用）
-//   ngFoods: [],        // NG食材リスト（永続）
-//   cookedRecipes: [],  // 作ったレシピ { name, cookedAt }（1ヶ月除外用）
-//   mode: null,         // 'ng_setting' など特殊モード
-// }
-const userState = {};
-const fs = require('fs');
-const DATA_FILE = './userdata.json';
-
-// 起動時にファイルからデータを読み込む
-function loadData() {
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      const raw = fs.readFileSync(DATA_FILE, 'utf8');
-      const saved = JSON.parse(raw);
-      Object.assign(userState, saved);
-      console.log('ユーザーデータ読み込み完了');
-    }
-  } catch (e) {
-    console.error('データ読み込みエラー:', e);
-  }
-}
-
-// NG食材・作ったレシピをファイルに保存
-function saveData() {
-  try {
-    const toSave = {};
-    for (const [uid, state] of Object.entries(userState)) {
-      toSave[uid] = {
-        ngFoods: state.ngFoods || [],
-        cookedRecipes: state.cookedRecipes || [],
-      };
-    }
-    fs.writeFileSync(DATA_FILE, JSON.stringify(toSave), 'utf8');
-  } catch (e) {
-    console.error('データ保存エラー:', e);
-  }
-}
-
-function getState(userId) {
-  if (!userState[userId]) {
-    userState[userId] = { items: [], shown: [], lastRecipe: null, ngFoods: [], cookedRecipes: [], mode: null };
-  }
-  const s = userState[userId];
-  if (!s.items) s.items = [];
-  if (!s.shown) s.shown = [];
-  if (s.lastRecipe === undefined) s.lastRecipe = null;
-  if (!s.ngFoods) s.ngFoods = [];
-  if (!s.cookedRecipes) s.cookedRecipes = [];
-  if (!s.mode) s.mode = null;
-  return s;
-}
-
-// 1ヶ月以内に作ったレシピ名リストを返す
-function getRecentCooked(state) {
+function getRecentCooked() {
   const oneMonthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
   return state.cookedRecipes
     .filter(r => r.cookedAt > oneMonthAgo)
     .map(r => r.name);
 }
 
-app.post('/webhook', line.middleware(lineConfig), async (req, res) => {
-  res.json({ status: 'ok' });
-  const events = req.body.events;
-  for (const event of events) {
-    if (event.type === 'message' && event.message.type === 'text') {
-      await handleMessage(event);
-    }
-    // 友だち追加時のウェルカムメッセージ
-    if (event.type === 'follow') {
-      await client.pushMessage(event.source.userId, [
-        {
-          type: 'text',
-          text: 'はじめまして！\n今日の特売レシピBotです🛒\n\nスーパーの特売品を送るだけで、今夜の夕食レシピを提案します！\n\nまず、使いたくない食材はありますか？',
-          quickReply: {
-            items: [
-              { type: 'action', action: { type: 'message', label: '🚫 NG食材を設定する', text: 'NG食材' } },
-              { type: 'action', action: { type: 'message', label: '✅ そのまま使う', text: 'そのまま使う' } },
-            ]
-          }
-        }
-      ]);
-    }
-  }
-});
+function saveStorage() {
+  localStorage.setItem('ngFoods', JSON.stringify(state.ngFoods));
+  localStorage.setItem('cookedRecipes', JSON.stringify(state.cookedRecipes));
+}
 
-async function handleMessage(event) {
-  const userId = event.source.userId;
-  const text = event.message.text.trim();
-  const state = getState(userId);
+// チャット開始
+function startChat() {
+  document.getElementById('welcome').style.display = 'none';
+  document.getElementById('inputArea').style.display = 'block';
+  addBotMessage('今日の特売品を教えてください！\n（複数ある場合は「、」か改行で区切ってください）\n\n例：鶏もも肉、大根、豆腐');
+  document.getElementById('inputBox').focus();
+}
 
-  // NG食材設定モード中
-  if (state.mode === 'ng_setting') {
-    if (text === 'キャンセル') {
-      state.mode = null;
-      await reply(event, 'キャンセルしました。');
-      return;
-    }
-    if (text === 'クリア') {
-      state.ngFoods = [];
-      state.mode = null;
-      saveData();
-      await reply(event, 'NG食材をすべて削除しました！');
-      return;
-    }
-    const newNg = text.split(/[\n、,，\s]+/).map(s => s.trim()).filter(s => s.length > 0);
-    state.ngFoods = newNg;
-    state.mode = null;
-    saveData();
-    await reply(event, `NG食材を登録しました！\n\n${newNg.map(f => `・${f}`).join('\n')}\n\n変更したいときは「NG食材」と送ってください。`);
-    return;
+// メッセージ送信
+async function sendMessage() {
+  const input = document.getElementById('inputBox');
+  const text = input.value.trim();
+  if (!text || state.waiting) return;
+  input.value = '';
+  autoResize(input);
+  await handleInput(text);
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
   }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+// 入力処理
+async function handleInput(text) {
+  addUserMessage(text);
+  setWaiting(true);
 
   // 作った
-  if (text === '作った' || text === '作りました') {
+  if (text === '作った') {
     if (state.lastRecipe) {
       state.cookedRecipes.push({ name: state.lastRecipe, cookedAt: Date.now() });
       state.lastRecipe = null;
-      saveData();
-      await reply(event, 'ありがとうございます！\n1ヶ月間はこのレシピを除外しますね。\nまた特売品を教えてください！');
+      saveStorage();
+      addBotMessage('ありがとうございます！\n1ヶ月間はこのレシピを除外しますね。\nまた特売品を教えてください！');
     } else {
-      await reply(event, 'レシピがまだ提案されていません。');
+      addBotMessage('レシピがまだ提案されていません。');
     }
+    setWaiting(false);
     return;
   }
 
   // 作らなかった
-  if (text === '作らなかった' || text === 'パス') {
+  if (text === '作らなかった') {
     state.lastRecipe = null;
-    await reply(event, 'わかりました！\n「別のレシピ」で他のレシピを見るか、「リセット」で食材を変えられます。');
-    return;
-  }
-
-  // そのまま使う（ウェルカムメッセージから）
-  if (text === 'そのまま使う' || text === '特売品入力モード') {
-    await reply(event, '今日の特売品を教えてください！\n（複数ある場合は改行か「、」で区切ってください）\n\n例：鶏もも肉、大根、豆腐\n\n👆 画面下部のメッセージ入力欄から送ってください');
-    return;
-  }
-
-  // NG食材の確認・設定
-  if (text === 'NG食材' || text === 'ng' || text === 'NG') {
-    state.mode = 'ng_setting';
-    const current = state.ngFoods.length > 0
-      ? `現在のNG食材：${state.ngFoods.join('、')}\n\n`
-      : '現在NG食材は登録されていません。\n\n';
-    await reply(event, `${current}使いたくない食材を送ってください。\n（複数は「、」か改行で区切ってください）\n\n例：ピーマン、魚、レバー\n\n全部削除する場合は「クリア」\nやめる場合は「キャンセル」`);
-    return;
-  }
-
-  // リセット
-  if (text === 'リセット' || text === 'はじめから' || text === 'reset') {
-    state.items = [];
-    state.shown = [];
-    state.lastRecipe = null;
-    state.mode = null;
-    await reply(event, '食材を入力し直しますね！\n\n今日の特売品を教えてください。\nNG食材を変更したい場合はボタンから。', {
-      items: [
-        { type: 'action', action: { type: 'message', label: '🚫 NG食材を変更する', text: 'NG食材' } },
-      ]
-    });
+    addBotMessage('わかりました！\n「別のレシピ」で他のレシピを見るか、食材を入力し直してください。');
+    showQuickReplies(['🔄 別のレシピ', '↩️ リセット']);
+    setWaiting(false);
     return;
   }
 
   // 別のレシピ
-  if (text === '別のレシピ' || text === '他のレシピ' || text === 'もう一度') {
-    if (state.items && state.items.length > 0) {
-      await reply(event, '別のレシピを考えています…');
-      const recentCooked = getRecentCooked(state);
-      const exclude = [...(state.shown || []), ...recentCooked];
-      const recipe = await getRecipe(state.items, exclude, state.ngFoods);
+  if (text === '別のレシピ' || text === '🔄 別のレシピ') {
+    if (state.items.length > 0) {
+      addBotMessage('別のレシピを考えています…');
+      const exclude = [...state.shown, ...getRecentCooked()];
+      const recipe = await getRecipe(state.items, exclude);
       if (recipe) {
-        state.shown = [...(state.shown || []), recipe.name];
+        state.shown.push(recipe.name);
         state.lastRecipe = recipe.name;
-        await push(userId, formatRecipe(recipe));
-        await push(userId, '作りましたか？', recipeQuickReply);
+        addBotMessage(formatRecipe(recipe));
+        showQuickReplies(['✅ 作った', '⏭ 作らなかった', '🔄 別のレシピ', '↩️ リセット']);
       }
     } else {
-      await reply(event, 'まず特売品を教えてください！');
+      addBotMessage('まず特売品を教えてください！');
     }
+    setWaiting(false);
     return;
   }
 
-  // 食材入力として処理
-  // システムコマンドは除外
-  const systemCommands = ['特売品入力モード', 'NG食材', 'NG', 'ng', 'リセット', 'はじめから', 'reset', '別のレシピ', '他のレシピ', 'もう一度', '作った', '作りました', '作らなかった', 'パス', 'そのまま使う', 'キャンセル', 'クリア'];
-  if (systemCommands.includes(text)) return;
+  // リセット
+  if (text === 'リセット' || text === '↩️ リセット') {
+    state.items = [];
+    state.shown = [];
+    state.lastRecipe = null;
+    addBotMessage('食材を入力し直しますね！\n今日の特売品を教えてください。');
+    setWaiting(false);
+    return;
+  }
 
-  const items = text
-    .split(/[\n、,，\s]+/)
-    .map(s => s.trim())
-    .filter(s => s.length > 0)
-    .slice(0, 5);
-
+  // 食材入力
+  const items = text.split(/[\n、,，]+/).map(s => s.trim()).filter(s => s.length > 0).slice(0, 5);
   if (items.length === 0) {
-    await reply(event, '食材を入力してください\n\n例：鶏もも肉、大根、豆腐');
+    addBotMessage('食材を入力してください\n\n例：鶏もも肉、大根、豆腐');
+    setWaiting(false);
     return;
   }
 
@@ -218,296 +483,179 @@ async function handleMessage(event) {
   state.lastRecipe = null;
 
   const ngText = state.ngFoods.length > 0 ? `\nNG食材：${state.ngFoods.join('、')}` : '';
-  await reply(event, `特売品を受け取りました！\n${items.map(i => `・${i}`).join('\n')}${ngText}\n\nレシピを考えています`);
+  addBotMessage(`特売品を受け取りました！\n${items.map(i => `・${i}`).join('\n')}${ngText}\n\nレシピを考えています…`);
 
-  const recentCooked = getRecentCooked(state);
-  const recipe = await getRecipe(items, recentCooked, state.ngFoods);
+  const recentCooked = getRecentCooked();
+  const recipe = await getRecipe(items, recentCooked);
   if (recipe) {
     state.shown = [recipe.name];
     state.lastRecipe = recipe.name;
-    await push(userId, formatRecipe(recipe));
+    addBotMessage(formatRecipe(recipe));
 
-    // 余り食材の提案
+    // 余り食材
     const leftover = await getLeftoverSuggestion(items, recipe.ingredients);
     if (leftover && leftover.suggestions && leftover.suggestions.length > 0) {
-      const suggText = leftover.suggestions
-        .map(s => `・${s.type}｜${s.name}\n  ${s.desc}`)
-        .join('\n');
-      await push(userId, `余った食材の活用アイデア\n\n${suggText}`);
+      const suggText = leftover.suggestions.map(s => `・${s.type}｜${s.name}\n  ${s.desc}`).join('\n');
+      addBotMessage(`余った食材の活用アイデア\n\n${suggText}`);
     }
 
-    await push(userId, '作りましたか？', recipeQuickReply);
+    showQuickReplies(['✅ 作った', '⏭ 作らなかった', '🔄 別のレシピ', '↩️ リセット']);
   } else {
-    await push(userId, '申し訳ありません、レシピの取得に失敗しました。もう一度試してみてください。');
+    addBotMessage('申し訳ありません、レシピの取得に失敗しました。もう一度試してみてください。');
   }
+
+  setWaiting(false);
 }
 
-async function getRecipe(items, exclude, ngFoods) {
-  const excludeText = exclude.length > 0
-    ? `\n- 以下は除外（提案済み or 最近作った）: 【${exclude.join('、')}】`
-    : '';
-  const ngText = ngFoods && ngFoods.length > 0
-    ? `\n- 以下のNG食材は絶対に使わないこと: 【${ngFoods.join('、')}】`
-    : '';
+// API呼び出し
+async function callClaude(prompt, maxTokens = 1000) {
+  const res = await fetch('/api/claude', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, maxTokens })
+  });
+  const data = await res.json();
+  const text = data.content.map(i => i.text || '').join('');
+  return JSON.parse(text.replace(/```json|```/g, '').trim());
+}
 
-  const prompt = `以下の特売食材を使った夕食レシピを1品提案してください。
+async function getRecipe(items, exclude) {
+  const excludeText = exclude.length > 0 ? `\n- 以下は除外: 【${exclude.join('、')}】` : '';
+  const ngText = state.ngFoods.length > 0 ? `\n- NG食材（絶対に使わない）: 【${state.ngFoods.join('、')}】` : '';
+  try {
+    return await callClaude(`以下の特売食材を使った夕食レシピを1品提案してください。
 特売食材: ${items.join('、')}
 対象: 40代、共働き、家族持ちのお母さん。疲れていても作れる、家族が喜ぶもの。
 
 【重要なルール】
-- 入力された特売食材はできるだけ全部使うこと（これが最優先）
-- 特売食材＋調味料など家にある基本的なもので作れるレシピを優先
-- 特別な食材や珍しい調味料が必要なレシピは避ける
-- 食材の組み合わせが料理として自然で美味しそうになるよう工夫すること
-- どうしても合わない食材だけ除外してOK${excludeText}${ngText}
+- 入力された特売食材はできるだけ全部使うこと（最優先）
+- 特売食材＋家にある基本的な調味料で作れるレシピを優先
+- 特別な食材や珍しい調味料が必要なレシピは避ける${excludeText}${ngText}
 
 必ずJSONのみで返してください（説明文なし）:
-{
-  "name": "料理名",
-  "time": "調理時間（例:20分）",
-  "desc": "この料理のポイント（50字以内）",
-  "ingredients": ["材料と分量1", "材料と分量2", "材料と分量3"],
-  "steps": ["手順1", "手順2", "手順3", "手順4"]
-}`;
-
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-
-    const data = await res.json();
-    console.log('Claude API response:', JSON.stringify(data).slice(0, 300));
-    if (!data.content) {
-      console.error('No content in response:', JSON.stringify(data));
-      return null;
-    }
-    const text = data.content.map(i => i.text || '').join('');
-    const clean = text.replace(/```json|```/g, '').trim();
-    return JSON.parse(clean);
-  } catch (e) {
-    console.error('Claude API error:', e);
-    return null;
-  }
+{"name":"料理名","time":"調理時間","desc":"ポイント（50字以内）","ingredients":["材料1","材料2"],"steps":["手順1","手順2"]}`);
+  } catch(e) { return null; }
 }
 
 async function getLeftoverSuggestion(allItems, usedIngredients) {
   const usedNames = usedIngredients.map(i => i.replace(/[（(].*[)）]/g, '').replace(/\s+\S+$/, '').trim());
-  const leftover = allItems.filter(item =>
-    !usedNames.some(used => used.includes(item) || item.includes(used))
-  );
-
+  const leftover = allItems.filter(item => !usedNames.some(u => u.includes(item) || item.includes(u)));
   if (leftover.length === 0) return null;
-
-  const prompt = `以下の食材が今日のメインレシピで使われませんでした。
+  try {
+    return await callClaude(`以下の余り食材で副菜・汁物・作り置きを1〜2個提案してください。
 余り食材: ${leftover.join('、')}
+必ずJSONのみ: {"suggestions":[{"type":"副菜/汁物/作り置き","name":"料理名","desc":"一言（30字以内）"}]}`, 500);
+  } catch(e) { return null; }
+}
 
-この食材を使った以下のいずれかを1〜2個提案してください：
-- 簡単な副菜・小鉢
-- 汁物・味噌汁
-- 作り置き・ストック方法
+function formatRecipe(r) {
+  return `【${r.name}】\n時間：${r.time}\n\n${r.desc}\n\n【材料】\n${r.ingredients.map(i => `・${i}`).join('\n')}\n\n【作り方】\n${r.steps.map((s,i) => `${i+1}. ${s}`).join('\n')}`;
+}
 
-必ずJSONのみで返してください（説明文なし）:
-{
-  "suggestions": [
-    {
-      "type": "副菜/汁物/作り置き",
-      "name": "料理名または保存方法",
-      "desc": "一言説明（30字以内）"
-    }
-  ]
-}`;
+// UI操作
+function addUserMessage(text) {
+  const area = document.getElementById('chatArea');
+  const div = document.createElement('div');
+  div.className = 'msg user';
+  div.innerHTML = `<div class="bubble user">${escHtml(text)}</div>`;
+  area.appendChild(div);
+  scrollBottom();
+}
 
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 500,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    const data = await res.json();
-    if (!data.content) return null;
-    const text = data.content.map(i => i.text || '').join('');
-    const clean = text.replace(/```json|```/g, '').trim();
-    return JSON.parse(clean);
-  } catch (e) {
-    console.error('Leftover API error:', e);
-    return null;
+function addBotMessage(text) {
+  removeTyping();
+  const area = document.getElementById('chatArea');
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  div.innerHTML = `<div class="msg-avatar bot">🍳</div><div class="bubble bot">${escHtml(text)}</div>`;
+  area.appendChild(div);
+  scrollBottom();
+}
+
+function showQuickReplies(labels) {
+  const area = document.getElementById('chatArea');
+  const div = document.createElement('div');
+  div.className = 'quick-replies';
+  div.id = 'quickReplies';
+  labels.forEach(label => {
+    const btn = document.createElement('button');
+    btn.className = 'qr-btn';
+    btn.textContent = label;
+    btn.onclick = () => {
+      document.getElementById('quickReplies')?.remove();
+      handleInput(label.replace(/^[^\s]+\s/, '').replace('✅ ', '').replace('⏭ ', '').replace('🔄 ', '').replace('↩️ ', ''));
+    };
+    div.appendChild(btn);
+  });
+  area.appendChild(div);
+  scrollBottom();
+}
+
+function setWaiting(val) {
+  state.waiting = val;
+  document.getElementById('sendBtn').disabled = val;
+  if (val) showTyping();
+  else removeTyping();
+}
+
+function showTyping() {
+  removeTyping();
+  const area = document.getElementById('chatArea');
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  div.id = 'typingMsg';
+  div.innerHTML = `<div class="msg-avatar bot">🍳</div><div class="typing"><span></span><span></span><span></span></div>`;
+  area.appendChild(div);
+  scrollBottom();
+}
+
+function removeTyping() {
+  document.getElementById('typingMsg')?.remove();
+}
+
+function scrollBottom() {
+  setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 50);
+}
+
+function escHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// NGモーダル
+function openNgModal() {
+  const modal = document.getElementById('ngModal');
+  const current = document.getElementById('ngCurrent');
+  if (state.ngFoods.length > 0) {
+    current.textContent = '現在：' + state.ngFoods.join('、');
+    current.style.display = 'block';
+  } else {
+    current.style.display = 'none';
+  }
+  document.getElementById('ngInput').value = state.ngFoods.join('、');
+  modal.classList.add('open');
+}
+
+function closeNgModal() {
+  document.getElementById('ngModal').classList.remove('open');
+}
+
+function saveNg() {
+  const val = document.getElementById('ngInput').value.trim();
+  state.ngFoods = val ? val.split(/[\n、,，]+/).map(s => s.trim()).filter(s => s.length > 0) : [];
+  saveStorage();
+  closeNgModal();
+  if (state.ngFoods.length > 0) {
+    addBotMessage(`NG食材を登録しました！\n${state.ngFoods.map(f => `・${f}`).join('\n')}`);
+  } else {
+    addBotMessage('NG食材をすべて削除しました！');
   }
 }
 
-function formatRecipe(recipe) {
-  const ingredients = recipe.ingredients.map(i => `・${i}`).join('\n');
-  const steps = recipe.steps.map((s, i) => `${i + 1}. ${s}`).join('\n');
-
-  return `【${recipe.name}】
-時間: ${recipe.time}
-
-${recipe.desc}
-
-【材料】
-${ingredients}
-
-【作り方】
-${steps}`;
+// クイックリプライのテキスト変換
+function qrText(label) {
+  const map = {'✅ 作った':'作った','⏭ 作らなかった':'作らなかった','🔄 別のレシピ':'別のレシピ','↩️ リセット':'リセット'};
+  return map[label] || label;
 }
-
-// クイックリプライボタンの定義
-const recipeQuickReply = {
-  items: [
-    { type: 'action', action: { type: 'message', label: '✅ 作った', text: '作った' } },
-    { type: 'action', action: { type: 'message', label: '⏭ 作らなかった', text: '作らなかった' } },
-    { type: 'action', action: { type: 'message', label: '🔄 別のレシピ', text: '別のレシピ' } },
-    { type: 'action', action: { type: 'message', label: '🛒 リセット', text: 'リセット' } },
-  ]
-};
-
-async function reply(event, text, quickReply = null) {
-  const message = { type: 'text', text };
-  if (quickReply) message.quickReply = quickReply;
-  await client.replyMessage(event.replyToken, message);
-}
-
-async function push(userId, text, quickReply = null) {
-  const message = { type: 'text', text };
-  if (quickReply) message.quickReply = quickReply;
-  await client.pushMessage(userId, message);
-}
-
-// ヘルスチェック
-app.get('/', (req, res) => res.send('今日の特売レシピBot 動作中'));
-
-// 静的ファイル配信（Webアプリ用）
-const path = require('path');
-app.use(express.static(path.join(__dirname)));
-app.use(express.json());
-
-// WebアプリからのAPIプロキシ
-app.post('/api/claude', async (req, res) => {
-  try {
-    const { prompt, maxTokens } = req.body;
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: maxTokens || 1000,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    const data = await response.json();
-    res.json(data);
-  } catch (e) {
-    console.error('API proxy error:', e);
-    res.status(500).json({ error: 'API error' });
-  }
-});
-
-// ============================================================
-// リッチメニュー自動セットアップ
-// ============================================================
-async function setupRichMenu() {
-  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-  const headers = {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
-  };
-
-  try {
-    // 既存のリッチメニューを全削除
-    const listRes = await fetch('https://api.line.me/v2/bot/richmenu/list', { headers });
-    const listData = await listRes.json();
-    if (listData.richmenus) {
-      for (const menu of listData.richmenus) {
-        await fetch(`https://api.line.me/v2/bot/richmenu/${menu.richMenuId}`, {
-          method: 'DELETE', headers
-        });
-      }
-    }
-
-    // リッチメニュー作成
-    const menuRes = await fetch('https://api.line.me/v2/bot/richmenu', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        size: { width: 2500, height: 1686 },
-        selected: true,
-        name: '特売レシピメニュー',
-        chatBarText: 'メニューを開く',
-        areas: [
-          // 上段左：特売品を入力
-          { bounds: { x: 0,    y: 0,    width: 833, height: 843 }, action: { type: 'message', text: '特売品入力モード' } },
-          // 上段中：NG食材
-          { bounds: { x: 833,  y: 0,    width: 834, height: 843 }, action: { type: 'message', text: 'NG食材' } },
-          // 上段右：別のレシピ
-          { bounds: { x: 1667, y: 0,    width: 833, height: 843 }, action: { type: 'message', text: '別のレシピ' } },
-          // 下段左：作った
-          { bounds: { x: 0,    y: 843,  width: 833, height: 843 }, action: { type: 'message', text: '作った' } },
-          // 下段中：作らなかった
-          { bounds: { x: 833,  y: 843,  width: 834, height: 843 }, action: { type: 'message', text: '作らなかった' } },
-          // 下段右：リセット
-          { bounds: { x: 1667, y: 843,  width: 833, height: 843 }, action: { type: 'message', text: 'リセット' } },
-        ]
-      })
-    });
-    const menuData = await menuRes.json();
-    const richMenuId = menuData.richMenuId;
-    console.log('リッチメニュー作成:', richMenuId);
-
-    // 画像をアップロード
-    const fs = require('fs');
-    const path = require('path');
-    const imgPath = path.join(__dirname, 'richmenu.jpg');
-
-    if (fs.existsSync(imgPath)) {
-      const imgBuffer = fs.readFileSync(imgPath);
-      const imgRes = await fetch(`https://api-data.line.me/v2/bot/richmenu/${richMenuId}/content`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'image/jpeg',
-          'Authorization': `Bearer ${token}`
-        },
-        body: imgBuffer
-      });
-      console.log('画像アップロード:', imgRes.status);
-    } else {
-      console.warn('richmenu.png が見つかりません。画像なしで設定します。');
-    }
-
-    // デフォルトに設定
-    await fetch(`https://api.line.me/v2/bot/user/all/richmenu/${richMenuId}`, {
-      method: 'POST', headers
-    });
-    console.log('リッチメニュー設定完了！');
-
-  } catch (e) {
-    console.error('リッチメニュー設定エラー:', e);
-  }
-}
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, async () => {
-  loadData();
-  console.log(`Server running on port ${PORT}`);
-  await setupRichMenu();
-});
+</script>
+</body>
+</html>
