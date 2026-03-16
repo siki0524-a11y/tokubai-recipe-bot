@@ -395,7 +395,7 @@ app.get('/', (req, res) => res.send('今日の特売レシピBot 動作中'));
 
 // 静的ファイル配信（Webアプリ用）
 const path = require('path');
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname)));
 app.use(express.json());
 
 // WebアプリからのAPIプロキシ
