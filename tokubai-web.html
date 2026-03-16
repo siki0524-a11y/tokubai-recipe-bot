@@ -309,6 +309,19 @@
     transition: transform 0.15s;
   }
   .welcome-start:hover { transform: translateY(-2px); }
+  .welcome-help {
+    background: white;
+    color: var(--orange);
+    border: 2px solid var(--orange);
+    padding: 12px 28px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .welcome-help:hover { background: var(--orange-light); }
 </style>
 </head>
 <body>
@@ -334,6 +347,8 @@
       <h2>今日の特売品は何ですか？</h2>
       <p>スーパーの特売品を入力するだけで<br>AIが今夜のレシピを1品提案します。<br>余った食材の活用アイデアもお知らせします。</p>
       <button class="welcome-start" onclick="startChat()">特売品を入力する</button>
+      <br><br>
+      <button class="welcome-help" onclick="showHelp()">📖 使い方を見る</button>
     </div>
   </div>
 
@@ -382,6 +397,14 @@ function getRecentCooked() {
 function saveStorage() {
   localStorage.setItem('ngFoods', JSON.stringify(state.ngFoods));
   localStorage.setItem('cookedRecipes', JSON.stringify(state.cookedRecipes));
+}
+
+// 使い方を表示
+function showHelp() {
+  document.getElementById('welcome').style.display = 'none';
+  document.getElementById('inputArea').style.display = 'block';
+  addBotMessage('📖 使い方ガイド\n\n【基本の使い方】\n1. 今日の特売品を入力して送信\n   例：鶏もも肉、大根、豆腐\n\n2. AIがレシピを1品提案します\n\n3. 作ったら「✅ 作った」をタップ\n   →1ヶ月同じレシピが出なくなります\n\n【便利な機能】\n🚫 NG食材：苦手な食材を登録して除外\n🔄 別のレシピ：違うレシピに変更\n↩️ リセット：食材を入力し直す\n🍱 余り食材：使わなかった食材の活用アイデアも自動提案\n\n準備ができたら特売品を入力してください！');
+  document.getElementById('inputBox').focus();
 }
 
 // チャット開始
