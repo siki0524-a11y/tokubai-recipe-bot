@@ -384,6 +384,7 @@ const state = {
   lastRecipe: null,
   ngFoods: JSON.parse(localStorage.getItem('ngFoods') || '[]'),
   cookedRecipes: JSON.parse(localStorage.getItem('cookedRecipes') || '[]'),
+  chatHistory: JSON.parse(localStorage.getItem('chatHistory') || '[]'),
   waiting: false,
 };
 
@@ -397,6 +398,41 @@ function getRecentCooked() {
 function saveStorage() {
   localStorage.setItem('ngFoods', JSON.stringify(state.ngFoods));
   localStorage.setItem('cookedRecipes', JSON.stringify(state.cookedRecipes));
+}
+
+function saveChatHistory() {
+  // 最新50件だけ保存
+  const msgs = [...document.querySelectorAll('.msg')].slice(-50).map(el => ({
+    type: el.classList.contains('user') ? 'user' : 'bot',
+    text: el.querySelector('.bubble')?.innerText || ''
+  }));
+  localStorage.setItem('chatHistory', JSON.stringify(msgs));
+  localStorage.setItem('chatState', JSON.stringify({
+    items: state.items,
+    shown: state.shown,
+    lastRecipe: state.lastRecipe,
+  }));
+}
+
+// リロード後に会話履歴を復元
+function restoreChat() {
+  const history = JSON.parse(localStorage.getItem('chatHistory') || '[]');
+  const savedState = JSON.parse(localStorage.getItem('chatState') || '{}');
+  if (history.length > 0) {
+    document.getElementById('welcome').style.display = 'none';
+    document.getElementById('inputArea').style.display = 'block';
+    history.forEach(msg => {
+      if (msg.type === 'user') addUserMessage(msg.text, true);
+      else addBotMessage(msg.text, true);
+    });
+    if (savedState.items) state.items = savedState.items;
+    if (savedState.shown) state.shown = savedState.shown;
+    if (savedState.lastRecipe) state.lastRecipe = savedState.lastRecipe;
+    if (state.lastRecipe) {
+      showQuickReplies(['✅ 作った', '⏭ 作らなかった', '🔄 別のレシピ', '↩️ リセット']);
+    }
+    scrollBottom();
+  }
 }
 
 // 使い方を表示
@@ -484,11 +520,41 @@ async function handleInput(text) {
     return;
   }
 
+  // 追加
+  if (text.startsWith('追加') || text.startsWith('＋') || text.startsWith('+')) {
+    const addText = text.replace(/^(追加|＋|\+)\s*/, '');
+    const newItems = addText.split(/[\n、,，]+/).map(s => s.trim()).filter(s => s.length > 0);
+    if (newItems.length > 0 && state.items.length > 0) {
+      state.items = [...state.items, ...newItems].slice(0, 5);
+      state.shown = [];
+      state.lastRecipe = null;
+      const ngText = state.ngFoods.length > 0 ? `\nNG食材：${state.ngFoods.join('、')}` : '';
+      addBotMessage(`食材を追加しました！\n${state.items.map(i => `・${i}`).join('\n')}${ngText}\n\nレシピを考えています…`);
+      const recipe = await getRecipe(state.items, getRecentCooked());
+      if (recipe) {
+        state.shown = [recipe.name];
+        state.lastRecipe = recipe.name;
+        addBotMessage(formatRecipe(recipe));
+        const leftover = await getLeftoverSuggestion(state.items, recipe.ingredients);
+        if (leftover?.suggestions?.length > 0) {
+          addBotMessage(`余った食材の活用アイデア\n\n${leftover.suggestions.map(s => `・${s.type}｜${s.name}\n  ${s.desc}`).join('\n')}`);
+        }
+        showQuickReplies(['✅ 作った', '⏭ 作らなかった', '🔄 別のレシピ', '↩️ リセット']);
+      }
+    } else if (state.items.length === 0) {
+      addBotMessage('まず特売品を入力してください！');
+    }
+    setWaiting(false);
+    return;
+  }
+
   // リセット
   if (text === 'リセット' || text === '↩️ リセット') {
     state.items = [];
     state.shown = [];
     state.lastRecipe = null;
+    localStorage.removeItem('chatHistory');
+    localStorage.removeItem('chatState');
     addBotMessage('食材を入力し直しますね！\n今日の特売品を教えてください。');
     setWaiting(false);
     return;
@@ -577,16 +643,17 @@ function formatRecipe(r) {
 }
 
 // UI操作
-function addUserMessage(text) {
+function addUserMessage(text, restore = false) {
   const area = document.getElementById('chatArea');
   const div = document.createElement('div');
   div.className = 'msg user';
   div.innerHTML = `<div class="bubble user">${escHtml(text)}</div>`;
   area.appendChild(div);
   scrollBottom();
+  if (!restore) saveChatHistory();
 }
 
-function addBotMessage(text) {
+function addBotMessage(text, restore = false) {
   removeTyping();
   const area = document.getElementById('chatArea');
   const div = document.createElement('div');
@@ -594,6 +661,7 @@ function addBotMessage(text) {
   div.innerHTML = `<div class="msg-avatar bot">🍳</div><div class="bubble bot">${escHtml(text)}</div>`;
   area.appendChild(div);
   scrollBottom();
+  if (!restore) saveChatHistory();
 }
 
 function showQuickReplies(labels) {
@@ -680,6 +748,9 @@ function qrText(label) {
   const map = {'✅ 作った':'作った','⏭ 作らなかった':'作らなかった','🔄 別のレシピ':'別のレシピ','↩️ リセット':'リセット'};
   return map[label] || label;
 }
+
+// ページ読み込み時に会話履歴を復元
+window.addEventListener('load', restoreChat);
 </script>
 </body>
 </html>
