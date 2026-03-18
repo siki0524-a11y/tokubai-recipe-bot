@@ -19,6 +19,11 @@
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
+  html, body {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
   body {
     font-family: 'Noto Sans JP', sans-serif;
     background: #f0f0f0;
@@ -32,37 +37,38 @@
   .header {
     width: 100%;
     background: linear-gradient(135deg, var(--orange), var(--orange-dark));
-    padding: 14px 20px;
+    padding: 10px 12px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     box-shadow: 0 2px 12px rgba(244,101,30,0.3);
     position: sticky;
     top: 0;
     z-index: 100;
   }
   .header-icon {
-    width: 38px; height: 38px;
+    width: 34px; height: 34px;
     background: white;
-    border-radius: 10px;
+    border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 20px;
+    font-size: 18px;
     flex-shrink: 0;
   }
-  .header-title { font-size: 16px; font-weight: 900; color: white; }
-  .header-sub { font-size: 11px; color: rgba(255,255,255,0.8); }
-  .header-right { margin-left: auto; }
+  .header-title { font-size: 14px; font-weight: 900; color: white; }
+  .header-sub { font-size: 10px; color: rgba(255,255,255,0.8); display: none; }
+  .header-right { margin-left: auto; display: flex; gap: 6px; flex-shrink: 0; }
   .ng-btn {
     background: rgba(255,255,255,0.2);
     border: 1.5px solid rgba(255,255,255,0.4);
     color: white;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
-    padding: 6px 14px;
+    padding: 5px 10px;
     border-radius: 999px;
     cursor: pointer;
     font-family: inherit;
     transition: background 0.15s;
+    white-space: nowrap;
   }
   .ng-btn:hover { background: rgba(255,255,255,0.3); }
 
@@ -79,18 +85,18 @@
   /* チャットエリア */
   .chat-area {
     flex: 1;
-    padding: 20px 16px;
+    padding: 16px 12px;
     display: flex;
     flex-direction: column;
     gap: 12px;
-    min-height: calc(100vh - 180px);
+    min-height: calc(100vh - 160px);
   }
 
   /* メッセージ */
   .msg {
     display: flex;
     align-items: flex-end;
-    gap: 8px;
+    gap: 6px;
     animation: fadeIn 0.3s ease;
   }
   @keyframes fadeIn {
@@ -100,10 +106,10 @@
   .msg.user { flex-direction: row-reverse; }
 
   .msg-avatar {
-    width: 32px; height: 32px;
+    width: 28px; height: 28px;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 16px;
+    font-size: 14px;
     flex-shrink: 0;
     background: white;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -111,8 +117,8 @@
   .msg-avatar.bot { background: var(--orange); }
 
   .bubble {
-    max-width: 75%;
-    padding: 12px 16px;
+    max-width: 80%;
+    padding: 10px 14px;
     border-radius: 18px;
     font-size: 13px;
     line-height: 1.8;
@@ -155,54 +161,32 @@
     30% { transform: translateY(-6px); }
   }
 
-  /* クイックリプライボタン */
-  .quick-replies {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 4px;
-    margin-left: 40px;
-  }
-  .qr-btn {
-    background: white;
-    border: 1.5px solid var(--orange);
-    color: var(--orange);
-    font-size: 12px;
-    font-weight: 700;
-    padding: 7px 16px;
-    border-radius: 999px;
-    cursor: pointer;
-    font-family: inherit;
-    transition: all 0.15s;
-    box-shadow: 0 2px 6px rgba(244,101,30,0.1);
-  }
-  .qr-btn:hover {
-    background: var(--orange);
-    color: white;
-  }
-
-  /* 入力エリア */
+  /* NGモーダル */
   .input-area {
     position: fixed;
     bottom: 0;
+    left: 0;
+    right: 0;
     width: 100%;
     max-width: 680px;
+    margin: 0 auto;
     background: white;
     border-top: 1px solid var(--border);
-    padding: 12px 16px;
+    padding: 10px 12px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
     box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
   }
   .input-wrap {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     align-items: flex-end;
   }
   .input-box {
     flex: 1;
     border: 1.5px solid var(--border);
     border-radius: 22px;
-    padding: 10px 16px;
-    font-size: 14px;
+    padding: 10px 14px;
+    font-size: 16px; /* iOS zoom防止のため16px以上 */
     font-family: inherit;
     resize: none;
     min-height: 44px;
@@ -210,6 +194,7 @@
     outline: none;
     transition: border-color 0.15s;
     line-height: 1.5;
+    -webkit-appearance: none;
   }
   .input-box:focus { border-color: var(--orange); }
   .send-btn {
@@ -224,9 +209,43 @@
     flex-shrink: 0;
     transition: transform 0.15s, background 0.15s;
     box-shadow: 0 4px 12px rgba(244,101,30,0.35);
+    -webkit-tap-highlight-color: transparent;
   }
   .send-btn:hover { transform: scale(1.08); background: var(--orange-dark); }
   .send-btn:disabled { opacity: 0.4; cursor: default; transform: none; }
+
+  /* クイックリプライ */
+  .quick-replies {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+    margin-left: 34px;
+  }
+  .qr-btn {
+    background: white;
+    border: 1.5px solid var(--orange);
+    color: var(--orange);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    box-shadow: 0 2px 6px rgba(244,101,30,0.1);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .qr-btn:active {
+    background: var(--orange);
+    color: white;
+  }
+
+  /* PC用メディアクエリ */
+  @media (min-width: 680px) {
+    .header-sub { display: block; }
+    .input-area { left: 50%; transform: translateX(-50%); right: auto; width: 680px; }
+  }
 
   /* NGモーダル */
   .modal-overlay {
