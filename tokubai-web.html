@@ -335,6 +335,7 @@
   </div>
   <div class="header-right" style="display:flex;gap:8px;">
     <button class="ng-btn" onclick="openNgModal()">🚫 NG食材</button>
+    <button class="ng-btn" onclick="openFavModal()">⭐ お気に入り</button>
     <button class="ng-btn" onclick="window.open('https://docs.google.com/forms/d/e/1FAIpQLSdWBvgjjlzoOlWv9FXozXFe7cfghORLH0ghBn0xRu-Cy-gOxw/viewform?usp=publish-editor','_blank')">📝 フィードバック</button>
   </div>
 </div>
@@ -359,6 +360,16 @@
         onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
       <button class="send-btn" id="sendBtn" onclick="sendMessage()">↑</button>
     </div>
+  </div>
+</div>
+
+<!-- お気に入りモーダル -->
+<div class="modal-overlay" id="favModal">
+  <div class="modal" style="max-height:80vh;overflow-y:auto;">
+    <h3>⭐ お気に入りレシピ</h3>
+    <p>保存したレシピ一覧です。</p>
+    <div id="favList" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;"></div>
+    <button class="modal-btn cancel" onclick="closeFavModal()" style="width:100%;">閉じる</button>
   </div>
 </div>
 
@@ -478,6 +489,25 @@ async function handleInput(text) {
   addUserMessage(text);
   setWaiting(true);
 
+  // お気に入り
+  if (text === 'お気に入り' || text === '⭐ お気に入り') {
+    if (state.lastRecipe) {
+      const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+      const exists = favorites.find(f => f.name === state.lastRecipe);
+      if (!exists) {
+        favorites.push({ name: state.lastRecipe, savedAt: Date.now(), text: state.lastRecipeText || '' });
+        localStorage.setItem('favorites', JSON.stringify(favorites));
+        addBotMessage(`⭐ 「${state.lastRecipe}」をお気に入りに追加しました！\nヘッダーの「⭐ お気に入り」から確認できます。`);
+      } else {
+        addBotMessage(`「${state.lastRecipe}」はすでにお気に入りに登録されています。`);
+      }
+    } else {
+      addBotMessage('レシピが提案されていません。');
+    }
+    setWaiting(false);
+    return;
+  }
+
   // 作った
   if (text === '作った') {
     if (state.lastRecipe) {
@@ -511,7 +541,7 @@ async function handleInput(text) {
         state.shown.push(recipe.name);
         state.lastRecipe = recipe.name;
         addBotMessage(formatRecipe(recipe));
-        showQuickReplies(['✅ 作った', '⏭ 作らなかった', '🔄 別のレシピ', '↩️ リセット']);
+        showQuickReplies(['✅ 作った', '⏭ 作らなかった', '🔄 別のレシピ', '⭐ お気に入り', '↩️ リセット']);
       }
     } else {
       addBotMessage('まず特売品を教えてください！');
@@ -539,7 +569,7 @@ async function handleInput(text) {
         if (leftover?.suggestions?.length > 0) {
           addBotMessage(`余った食材の活用アイデア\n\n${leftover.suggestions.map(s => `・${s.type}｜${s.name}\n  ${s.desc}`).join('\n')}`);
         }
-        showQuickReplies(['✅ 作った', '⏭ 作らなかった', '🔄 別のレシピ', '↩️ リセット']);
+        showQuickReplies(['✅ 作った', '⏭ 作らなかった', '🔄 別のレシピ', '⭐ お気に入り', '↩️ リセット']);
       }
     } else if (state.items.length === 0) {
       addBotMessage('まず特売品を入力してください！');
@@ -580,6 +610,7 @@ async function handleInput(text) {
   if (recipe) {
     state.shown = [recipe.name];
     state.lastRecipe = recipe.name;
+    state.lastRecipeText = formatRecipe(recipe);
     addBotMessage(formatRecipe(recipe));
 
     // 余り食材
@@ -589,7 +620,7 @@ async function handleInput(text) {
       addBotMessage(`余った食材の活用アイデア\n\n${suggText}`);
     }
 
-    showQuickReplies(['✅ 作った', '⏭ 作らなかった', '🔄 別のレシピ', '↩️ リセット']);
+    showQuickReplies(['✅ 作った', '⏭ 作らなかった', '🔄 別のレシピ', '⭐ お気に入り', '↩️ リセット']);
   } else {
     addBotMessage('申し訳ありません、レシピの取得に失敗しました。もう一度試してみてください。');
   }
@@ -711,6 +742,41 @@ function scrollBottom() {
 
 function escHtml(t) {
   return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// お気に入りモーダル
+function openFavModal() {
+  const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+  const list = document.getElementById('favList');
+  list.innerHTML = '';
+  if (favorites.length === 0) {
+    list.innerHTML = '<p style="font-size:13px;color:#888;text-align:center;padding:20px;">まだお気に入りはありません。<br>レシピ提案後に「⭐ お気に入り」を<br>タップして保存できます。</p>';
+  } else {
+    favorites.slice().reverse().forEach((f, i) => {
+      const idx = favorites.length - 1 - i;
+      const div = document.createElement('div');
+      div.style.cssText = 'border:1.5px solid #eee;border-radius:12px;padding:14px;position:relative;';
+      div.innerHTML = `
+        <div style="font-size:13px;font-weight:900;margin-bottom:6px;padding-right:24px;">⭐ ${f.name}</div>
+        <div style="font-size:11px;color:#888;margin-bottom:8px;">${new Date(f.savedAt).toLocaleDateString('ja-JP')}</div>
+        <div style="font-size:11px;color:#555;white-space:pre-wrap;line-height:1.7;">${f.text}</div>
+        <button onclick="deleteFav(${idx})" style="position:absolute;top:10px;right:10px;background:none;border:none;font-size:16px;cursor:pointer;color:#ccc;">✕</button>
+      `;
+      list.appendChild(div);
+    });
+  }
+  document.getElementById('favModal').classList.add('open');
+}
+
+function closeFavModal() {
+  document.getElementById('favModal').classList.remove('open');
+}
+
+function deleteFav(idx) {
+  const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+  favorites.splice(idx, 1);
+  localStorage.setItem('favorites', JSON.stringify(favorites));
+  openFavModal();
 }
 
 // NGモーダル
