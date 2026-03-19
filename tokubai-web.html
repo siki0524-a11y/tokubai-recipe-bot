@@ -10,6 +10,8 @@
 
   gtag('config', 'G-499DJ3SVKG');
 </script>
+
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>今日の特売レシピ</title>
@@ -364,7 +366,7 @@
   <div class="header-right" style="display:flex;gap:8px;">
     <button class="ng-btn" onclick="openNgModal()">🚫 NG食材</button>
     <button class="ng-btn" onclick="openFavModal()">⭐ お気に入り</button>
-    <button class="ng-btn" onclick="window.open('https://docs.google.com/forms/d/e/1FAIpQLSdWBvgjjlzoOlWv9FXozXFe7cfghORLH0ghBn0xRu-Cy-gOxw/viewform?usp=publish-editor','_blank')">📝 フィードバック</button>
+    <button class="ng-btn" onclick="window.open(FEEDBACK_URL,'_blank')">📝 フィードバック</button>
   </div>
 </div>
 
@@ -417,13 +419,17 @@
 
 <script>
 // 状態管理
+const FEEDBACK_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdWBvgjjlzoOlWv9FXozXFe7cfghORLH0ghBn0xRu-Cy-gOxw/viewform?usp=publish-editor';
+
 const state = {
   items: [],
   shown: [],
   lastRecipe: null,
+  lastRecipeText: '',
   ngFoods: JSON.parse(localStorage.getItem('ngFoods') || '[]'),
   cookedRecipes: JSON.parse(localStorage.getItem('cookedRecipes') || '[]'),
   chatHistory: JSON.parse(localStorage.getItem('chatHistory') || '[]'),
+  recipeCount: parseInt(localStorage.getItem('recipeCount') || '0'),
   waiting: false,
 };
 
@@ -649,6 +655,27 @@ async function handleInput(text) {
     }
 
     showQuickReplies(['✅ 作った', '⏭ 作らなかった', '🔄 別のレシピ', '⭐ お気に入り', '↩️ リセット']);
+
+    // レシピカウント＆10回でフィードバック促進
+    state.recipeCount++;
+    localStorage.setItem('recipeCount', state.recipeCount);
+    if (state.recipeCount % 10 === 0) {
+      setTimeout(() => {
+        addBotMessage(`🎉 レシピを${state.recipeCount}回提案しました！\nいつもご利用ありがとうございます。\n\nサービス改善のため、ぜひフィードバックをお聞かせください！`);
+        const area = document.getElementById('chatArea');
+        const div = document.createElement('div');
+        div.className = 'quick-replies';
+        const btn = document.createElement('button');
+        btn.className = 'qr-btn';
+        btn.style.background = '#F4651E';
+        btn.style.color = 'white';
+        btn.textContent = '📝 フィードバックを送る';
+        btn.onclick = () => window.open(FEEDBACK_URL, '_blank');
+        div.appendChild(btn);
+        area.appendChild(div);
+        scrollBottom();
+      }, 1000);
+    }
   } else {
     addBotMessage('申し訳ありません、レシピの取得に失敗しました。もう一度試してみてください。');
   }
