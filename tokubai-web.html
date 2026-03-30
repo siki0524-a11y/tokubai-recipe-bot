@@ -1,17 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-499DJ3SVKG"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-499DJ3SVKG');
-</script>
-
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>今日の特売レシピ</title>
@@ -24,16 +13,11 @@
     --dark: #1a1a1a;
     --gray: #f5f5f5;
     --border: #eee;
-    --text: #333;
     --sub: #888;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  html, body {
-    width: 100%;
-    overflow-x: hidden;
-  }
+  html, body { width: 100%; overflow-x: hidden; }
 
   body {
     font-family: 'Noto Sans JP', sans-serif;
@@ -80,6 +64,7 @@
     font-family: inherit;
     transition: background 0.15s;
     white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
   }
   .ng-btn:hover { background: rgba(255,255,255,0.3); }
 
@@ -90,7 +75,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 0 0 100px;
+    padding: 0 0 120px;
   }
 
   /* チャットエリア */
@@ -148,7 +133,7 @@
     border-radius: 18px 18px 4px 18px;
   }
 
-  /* タイピングインジケーター */
+  /* タイピング */
   .typing {
     display: flex;
     align-items: center;
@@ -172,59 +157,6 @@
     30% { transform: translateY(-6px); }
   }
 
-  /* NGモーダル */
-  .input-area {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    max-width: 680px;
-    margin: 0 auto;
-    background: white;
-    border-top: 1px solid var(--border);
-    padding: 10px 12px;
-    padding-bottom: max(10px, env(safe-area-inset-bottom));
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
-  }
-  .input-wrap {
-    display: flex;
-    gap: 8px;
-    align-items: flex-end;
-  }
-  .input-box {
-    flex: 1;
-    border: 1.5px solid var(--border);
-    border-radius: 22px;
-    padding: 10px 14px;
-    font-size: 16px; /* iOS zoom防止のため16px以上 */
-    font-family: inherit;
-    resize: none;
-    min-height: 44px;
-    max-height: 120px;
-    outline: none;
-    transition: border-color 0.15s;
-    line-height: 1.5;
-    -webkit-appearance: none;
-  }
-  .input-box:focus { border-color: var(--orange); }
-  .send-btn {
-    width: 44px; height: 44px;
-    background: var(--orange);
-    border: none;
-    border-radius: 50%;
-    color: white;
-    font-size: 18px;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-    transition: transform 0.15s, background 0.15s;
-    box-shadow: 0 4px 12px rgba(244,101,30,0.35);
-    -webkit-tap-highlight-color: transparent;
-  }
-  .send-btn:hover { transform: scale(1.08); background: var(--orange-dark); }
-  .send-btn:disabled { opacity: 0.4; cursor: default; transform: none; }
-
   /* クイックリプライ */
   .quick-replies {
     display: flex;
@@ -247,26 +179,137 @@
     box-shadow: 0 2px 6px rgba(244,101,30,0.1);
     -webkit-tap-highlight-color: transparent;
   }
-  .qr-btn:active {
-    background: var(--orange);
-    color: white;
+  .qr-btn:active { background: var(--orange); color: white; }
+
+  /* 入力エリア */
+  .input-area {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    background: white;
+    border-top: 1px solid var(--border);
+    padding: 8px 12px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
   }
 
-  /* PC用メディアクエリ */
+  /* 料理タイプ選択 */
+  .type-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .type-btn {
+    flex: 1;
+    padding: 6px 4px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: white;
+    color: var(--sub);
+    font-size: 12px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .type-btn.active {
+    border-color: var(--orange);
+    background: var(--orange-light);
+    color: var(--orange);
+  }
+
+  .input-wrap {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+  .input-box {
+    flex: 1;
+    border: 1.5px solid var(--border);
+    border-radius: 22px;
+    padding: 10px 14px;
+    font-size: 16px;
+    font-family: inherit;
+    resize: none;
+    min-height: 44px;
+    max-height: 120px;
+    outline: none;
+    transition: border-color 0.15s;
+    line-height: 1.5;
+    -webkit-appearance: none;
+  }
+  .input-box:focus { border-color: var(--orange); }
+  .send-btn {
+    width: 44px; height: 44px;
+    background: var(--orange);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: transform 0.15s, background 0.15s;
+    box-shadow: 0 4px 12px rgba(244,101,30,0.35);
+    -webkit-tap-highlight-color: transparent;
+    line-height: 1;
+  }
+  .send-btn:hover { transform: scale(1.08); background: var(--orange-dark); }
+  .send-btn:disabled { opacity: 0.4; cursor: default; transform: none; }
+
+  /* 前回入力バナー */
+  .resume-banner {
+    background: var(--orange-light);
+    border: 1px solid rgba(244,101,30,0.2);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #555;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 4px;
+    animation: fadeIn 0.3s ease;
+  }
+  .resume-banner-text { line-height: 1.6; }
+  .resume-banner-text strong { color: var(--orange); font-weight: 700; }
+  .resume-use-btn {
+    background: var(--orange);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* PC */
   @media (min-width: 680px) {
     .header-sub { display: block; }
     .input-area { left: 50%; transform: translateX(-50%); right: auto; width: 680px; }
   }
 
-  /* NGモーダル */
+  /* モーダル */
   .modal-overlay {
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.5);
-    display: flex; align-items: center; justify-content: center;
+    display: none;
+    align-items: center;
+    justify-content: center;
     z-index: 200;
     padding: 20px;
-    display: none;
   }
   .modal-overlay.open { display: flex; }
   .modal {
@@ -320,11 +363,37 @@
   /* ウェルカム */
   .welcome {
     text-align: center;
-    padding: 40px 20px;
+    padding: 36px 16px;
   }
-  .welcome-icon { font-size: 56px; margin-bottom: 16px; }
-  .welcome h2 { font-size: 20px; font-weight: 900; margin-bottom: 8px; color: var(--dark); }
-  .welcome p { font-size: 13px; color: var(--sub); line-height: 1.9; margin-bottom: 24px; }
+  .welcome-icon { font-size: 52px; margin-bottom: 12px; }
+  .welcome h2 { font-size: 19px; font-weight: 900; margin-bottom: 16px; color: var(--dark); }
+
+  /* コンセプトカード */
+  .concept-card {
+    margin: 0 auto 24px;
+    max-width: 340px;
+    background: #fafafa;
+    border: 1px solid #e8e8e8;
+    border-left: 3px solid var(--orange);
+    border-radius: 0 10px 10px 0;
+    padding: 12px 16px;
+    text-align: left;
+    animation: fadeIn 0.5s ease;
+  }
+  .concept-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--orange);
+    letter-spacing: 2px;
+    margin-bottom: 7px;
+  }
+  .concept-text {
+    font-size: 12px;
+    color: #555;
+    line-height: 1.9;
+  }
+  .concept-text strong { color: var(--dark); font-weight: 700; }
+
   .welcome-start {
     background: var(--orange);
     color: white;
@@ -337,19 +406,22 @@
     cursor: pointer;
     box-shadow: 0 6px 20px rgba(244,101,30,0.35);
     transition: transform 0.15s;
+    -webkit-tap-highlight-color: transparent;
   }
   .welcome-start:hover { transform: translateY(-2px); }
   .welcome-help {
     background: white;
     color: var(--orange);
     border: 2px solid var(--orange);
-    padding: 12px 28px;
+    padding: 10px 24px;
     border-radius: 999px;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
     font-family: inherit;
     cursor: pointer;
     transition: all 0.15s;
+    margin-top: 12px;
+    display: inline-block;
   }
   .welcome-help:hover { background: var(--orange-light); }
 </style>
@@ -363,7 +435,7 @@
     <div class="header-title">今日の特売レシピ</div>
     <div class="header-sub">特売品を入力するだけで今夜の献立を提案</div>
   </div>
-  <div class="header-right" style="display:flex;gap:8px;">
+  <div class="header-right">
     <button class="ng-btn" onclick="openNgModal()">🚫 NG食材</button>
     <button class="ng-btn" onclick="openFavModal()">⭐ お気に入り</button>
     <button class="ng-btn" onclick="window.open(FEEDBACK_URL,'_blank')">📝 フィードバック</button>
@@ -376,19 +448,28 @@
     <div class="welcome" id="welcome">
       <div class="welcome-icon">🍳</div>
       <h2>今日の特売品は何ですか？</h2>
-      <p>スーパーの特売品を入力するだけで<br>AIが今夜のレシピを1品提案します。<br>余った食材の活用アイデアもお知らせします。</p>
-      <button class="welcome-start" onclick="startChat()">特売品を入力する</button>
-      <br><br>
+      <div class="concept-card">
+        <div class="concept-label">このツールについて</div>
+        <div class="concept-text" id="conceptText"></div>
+      </div>
+      <button class="welcome-start" onclick="startChat()">特売品を入力する</button><br>
       <button class="welcome-help" onclick="showHelp()">📖 使い方を見る</button>
     </div>
   </div>
 
   <!-- 入力エリア -->
   <div class="input-area" id="inputArea" style="display:none;">
+    <!-- 料理タイプ選択 -->
+    <div class="type-bar" id="typeBar">
+      <button class="type-btn active" data-type="おまかせ" onclick="selectType(this)">おまかせ</button>
+      <button class="type-btn" data-type="メイン" onclick="selectType(this)">🍽 メイン</button>
+      <button class="type-btn" data-type="スープ" onclick="selectType(this)">🍲 スープ</button>
+      <button class="type-btn" data-type="おつまみ" onclick="selectType(this)">🍺 おつまみ</button>
+    </div>
     <div class="input-wrap">
       <textarea class="input-box" id="inputBox" placeholder="例：鶏もも肉、大根、豆腐" rows="1"
         onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-      <button class="send-btn" id="sendBtn" onclick="sendMessage()">↑</button>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">&#8679;</button>
     </div>
   </div>
 </div>
@@ -418,85 +499,125 @@
 </div>
 
 <script>
-// 状態管理
 const FEEDBACK_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdWBvgjjlzoOlWv9FXozXFe7cfghORLH0ghBn0xRu-Cy-gOxw/viewform?usp=publish-editor';
 
+// ============================================================
+// 状態管理
+// ============================================================
 const state = {
   items: [],
   shown: [],
   lastRecipe: null,
   lastRecipeText: '',
-  ngFoods: JSON.parse(localStorage.getItem('ngFoods') || '[]'),
-  cookedRecipes: JSON.parse(localStorage.getItem('cookedRecipes') || '[]'),
-  chatHistory: JSON.parse(localStorage.getItem('chatHistory') || '[]'),
+  selectedType: 'おまかせ',
+  ngFoods: load('ngFoods', []),
+  cookedRecipes: load('cookedRecipes', []),
+  recipeHistory: load('recipeHistory', []), // 直近提案履歴（重複防止用）
   recipeCount: parseInt(localStorage.getItem('recipeCount') || '0'),
   waiting: false,
 };
 
-function getRecentCooked() {
-  const oneMonthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  return state.cookedRecipes
-    .filter(r => r.cookedAt > oneMonthAgo)
-    .map(r => r.name);
+function load(key, def) {
+  try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(def)); }
+  catch(e) { return def; }
+}
+
+function save(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
 }
 
 function saveStorage() {
-  localStorage.setItem('ngFoods', JSON.stringify(state.ngFoods));
-  localStorage.setItem('cookedRecipes', JSON.stringify(state.cookedRecipes));
+  save('ngFoods', state.ngFoods);
+  save('cookedRecipes', state.cookedRecipes);
+  save('recipeHistory', state.recipeHistory.slice(-20)); // 直近20件
 }
 
-function saveChatHistory() {
-  // 最新50件だけ保存
-  const msgs = [...document.querySelectorAll('.msg')].slice(-50).map(el => ({
-    type: el.classList.contains('user') ? 'user' : 'bot',
-    text: el.querySelector('.bubble')?.innerText || ''
-  }));
-  localStorage.setItem('chatHistory', JSON.stringify(msgs));
-  localStorage.setItem('chatState', JSON.stringify({
-    items: state.items,
-    shown: state.shown,
-    lastRecipe: state.lastRecipe,
-  }));
+function getRecentCooked() {
+  const oneMonthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  return state.cookedRecipes.filter(r => r.cookedAt > oneMonthAgo).map(r => r.name);
 }
 
-// リロード後に会話履歴を復元
-function restoreChat() {
-  const history = JSON.parse(localStorage.getItem('chatHistory') || '[]');
-  const savedState = JSON.parse(localStorage.getItem('chatState') || '{}');
-  if (history.length > 0) {
-    document.getElementById('welcome').style.display = 'none';
-    document.getElementById('inputArea').style.display = 'block';
-    history.forEach(msg => {
-      if (msg.type === 'user') addUserMessage(msg.text, true);
-      else addBotMessage(msg.text, true);
-    });
-    if (savedState.items) state.items = savedState.items;
-    if (savedState.shown) state.shown = savedState.shown;
-    if (savedState.lastRecipe) state.lastRecipe = savedState.lastRecipe;
-    if (state.lastRecipe) {
-      showQuickReplies(['✅ 作った', '⏭ 作らなかった', '🔄 別のレシピ', '↩️ リセット']);
-    }
-    scrollBottom();
+// ============================================================
+// 当日の入力保持
+// ============================================================
+function saveTodayItems(items) {
+  const today = new Date().toDateString();
+  save('todayItems', { date: today, items });
+}
+
+function loadTodayItems() {
+  try {
+    const data = JSON.parse(localStorage.getItem('todayItems') || 'null');
+    if (!data) return null;
+    if (data.date !== new Date().toDateString()) return null;
+    return data.items;
+  } catch(e) { return null; }
+}
+
+// ============================================================
+// 料理タイプ選択
+// ============================================================
+function selectType(btn) {
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.selectedType = btn.dataset.type;
+}
+
+// ============================================================
+// コンセプトローテーション
+// ============================================================
+const CONCEPTS = [
+  '今日の献立を考える余裕がない日に。\n<strong>特売品から、今すぐ1品だけ決めるためのツール</strong>です。',
+  'レシピをたくさん比べるより、まず1品決めたい人へ。\n<strong>忙しい日の買い物中に使うことを想定</strong>しています。',
+  'このツールは、料理好きのための検索サービスではありません。\n「<strong>考える手間を減らしたい日</strong>」のための、時短用レシピ提案です。',
+];
+
+function showConcept() {
+  try {
+    const idx = parseInt(localStorage.getItem('conceptIdx') || '0') % CONCEPTS.length;
+    document.getElementById('conceptText').innerHTML = CONCEPTS[idx].replace(/\n/g, '<br>');
+    localStorage.setItem('conceptIdx', (idx + 1) % CONCEPTS.length);
+  } catch(e) {
+    document.getElementById('conceptText').innerHTML = CONCEPTS[0].replace(/\n/g, '<br>');
   }
 }
 
-// 使い方を表示
-function showHelp() {
-  document.getElementById('welcome').style.display = 'none';
-  document.getElementById('inputArea').style.display = 'block';
-  addBotMessage('📖 使い方ガイド\n\n【基本の使い方】\n1. 今日の特売品を入力して送信\n   例：鶏もも肉、大根、豆腐\n\n2. AIがレシピを1品提案します\n\n3. 作ったら「✅ 作った」をタップ\n   →1ヶ月同じレシピが出なくなります\n\n【便利な機能】\n🚫 NG食材：苦手な食材を登録して除外\n🔄 別のレシピ：違うレシピに変更\n↩️ リセット：食材を入力し直す\n🍱 余り食材：使わなかった食材の活用アイデアも自動提案\n\n準備ができたら特売品を入力してください！');
-  document.getElementById('inputBox').focus();
-}
-
+// ============================================================
 // チャット開始
+// ============================================================
 function startChat() {
   document.getElementById('welcome').style.display = 'none';
   document.getElementById('inputArea').style.display = 'block';
-  addBotMessage('今日の特売品を教えてください！\n（複数ある場合は「、」か改行で区切ってください）\n\n例：鶏もも肉、大根、豆腐');
+
+  // 当日入力の引き継ぎ確認
+  const todayItems = loadTodayItems();
+  if (todayItems && todayItems.length > 0) {
+    state.items = todayItems;
+    const area = document.getElementById('chatArea');
+    const banner = document.createElement('div');
+    banner.className = 'resume-banner';
+    banner.innerHTML = `
+      <div class="resume-banner-text">前回の入力を引き継いでいます：<br><strong>${todayItems.join('、')}</strong></div>
+      <button class="resume-use-btn" onclick="useResume(this.parentElement)">このまま使う</button>
+    `;
+    area.appendChild(banner);
+  } else {
+    addBotMessage('今日の特売品を教えてください！\n（複数ある場合は「、」か改行で区切ってください）\n\n例：鶏もも肉、大根、豆腐\n\n👆 画面下部の入力欄から送ってください');
+  }
   document.getElementById('inputBox').focus();
 }
 
+function useResume(banner) {
+  banner.remove();
+  const ngText = state.ngFoods.length > 0 ? `\nNG食材：${state.ngFoods.join('、')}` : '';
+  const typeText = state.selectedType !== 'おまかせ' ? `\n料理タイプ：${state.selectedType}` : '';
+  addBotMessage(`特売品を受け取りました！\n${state.items.map(i => `・${i}`).join('\n')}${ngText}${typeText}\n\nレシピを考えています…`);
+  processRecipe(state.items);
+}
+
+// ============================================================
 // メッセージ送信
+// ============================================================
 async function sendMessage() {
   const input = document.getElementById('inputBox');
   const text = input.value.trim();
@@ -518,7 +639,9 @@ function autoResize(el) {
   el.style.height = Math.min(el.scrollHeight, 120) + 'px';
 }
 
+// ============================================================
 // 入力処理
+// ============================================================
 async function handleInput(text) {
   addUserMessage(text);
   setWaiting(true);
@@ -526,12 +649,12 @@ async function handleInput(text) {
   // お気に入り
   if (text === 'お気に入り' || text === '⭐ お気に入り') {
     if (state.lastRecipe) {
-      const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+      const favorites = load('favorites', []);
       const exists = favorites.find(f => f.name === state.lastRecipe);
       if (!exists) {
-        favorites.push({ name: state.lastRecipe, savedAt: Date.now(), text: state.lastRecipeText || '' });
-        localStorage.setItem('favorites', JSON.stringify(favorites));
-        addBotMessage(`⭐ 「${state.lastRecipe}」をお気に入りに追加しました！\nヘッダーの「⭐ お気に入り」から確認できます。`);
+        favorites.push({ name: state.lastRecipe, savedAt: Date.now(), text: state.lastRecipeText });
+        save('favorites', favorites);
+        addBotMessage(`⭐ 「${state.lastRecipe}」をお気に入りに追加しました！`);
       } else {
         addBotMessage(`「${state.lastRecipe}」はすでにお気に入りに登録されています。`);
       }
@@ -569,44 +692,17 @@ async function handleInput(text) {
   if (text === '別のレシピ' || text === '🔄 別のレシピ') {
     if (state.items.length > 0) {
       addBotMessage('別のレシピを考えています…');
-      const exclude = [...state.shown, ...getRecentCooked()];
+      const exclude = [...state.shown, ...getRecentCooked(), ...state.recipeHistory.map(r => r.name)];
       const recipe = await getRecipe(state.items, exclude);
       if (recipe) {
         state.shown.push(recipe.name);
         state.lastRecipe = recipe.name;
+        state.lastRecipeText = formatRecipe(recipe);
         addBotMessage(formatRecipe(recipe));
         showQuickReplies(['✅ 作った', '⏭ 作らなかった', '🔄 別のレシピ', '⭐ お気に入り', '↩️ リセット']);
       }
     } else {
       addBotMessage('まず特売品を教えてください！');
-    }
-    setWaiting(false);
-    return;
-  }
-
-  // 追加
-  if (text.startsWith('追加') || text.startsWith('＋') || text.startsWith('+')) {
-    const addText = text.replace(/^(追加|＋|\+)\s*/, '');
-    const newItems = addText.split(/[\n、,，]+/).map(s => s.trim()).filter(s => s.length > 0);
-    if (newItems.length > 0 && state.items.length > 0) {
-      state.items = [...state.items, ...newItems].slice(0, 5);
-      state.shown = [];
-      state.lastRecipe = null;
-      const ngText = state.ngFoods.length > 0 ? `\nNG食材：${state.ngFoods.join('、')}` : '';
-      addBotMessage(`食材を追加しました！\n${state.items.map(i => `・${i}`).join('\n')}${ngText}\n\nレシピを考えています…`);
-      const recipe = await getRecipe(state.items, getRecentCooked());
-      if (recipe) {
-        state.shown = [recipe.name];
-        state.lastRecipe = recipe.name;
-        addBotMessage(formatRecipe(recipe));
-        const leftover = await getLeftoverSuggestion(state.items, recipe.ingredients);
-        if (leftover?.suggestions?.length > 0) {
-          addBotMessage(`余った食材の活用アイデア\n\n${leftover.suggestions.map(s => `・${s.type}｜${s.name}\n  ${s.desc}`).join('\n')}`);
-        }
-        showQuickReplies(['✅ 作った', '⏭ 作らなかった', '🔄 別のレシピ', '⭐ お気に入り', '↩️ リセット']);
-      }
-    } else if (state.items.length === 0) {
-      addBotMessage('まず特売品を入力してください！');
     }
     setWaiting(false);
     return;
@@ -624,8 +720,27 @@ async function handleInput(text) {
     return;
   }
 
+  // 追加
+  if (text.startsWith('追加') || text.startsWith('＋') || text.startsWith('+')) {
+    const addText = text.replace(/^(追加|＋|\+)\s*/, '');
+    const newItems = addText.split(/[\n、,，]+/).map(s => s.trim()).filter(s => s.length > 0);
+    if (newItems.length > 0 && state.items.length > 0) {
+      state.items = [...state.items, ...newItems].slice(0, 8);
+      saveTodayItems(state.items);
+      state.shown = [];
+      state.lastRecipe = null;
+      const ngText = state.ngFoods.length > 0 ? `\nNG食材：${state.ngFoods.join('、')}` : '';
+      addBotMessage(`食材を追加しました！\n${state.items.map(i => `・${i}`).join('\n')}${ngText}\n\nレシピを考えています…`);
+      await processRecipe(state.items);
+    } else if (state.items.length === 0) {
+      addBotMessage('まず特売品を入力してください！');
+    }
+    setWaiting(false);
+    return;
+  }
+
   // 食材入力
-  const items = text.split(/[\n、,，]+/).map(s => s.trim()).filter(s => s.length > 0).slice(0, 5);
+  const items = text.split(/[\n、,，]+/).map(s => s.trim()).filter(s => s.length > 0).slice(0, 8);
   if (items.length === 0) {
     addBotMessage('食材を入力してください\n\n例：鶏もも肉、大根、豆腐');
     setWaiting(false);
@@ -635,40 +750,52 @@ async function handleInput(text) {
   state.items = items;
   state.shown = [];
   state.lastRecipe = null;
+  saveTodayItems(items);
 
   const ngText = state.ngFoods.length > 0 ? `\nNG食材：${state.ngFoods.join('、')}` : '';
-  addBotMessage(`特売品を受け取りました！\n${items.map(i => `・${i}`).join('\n')}${ngText}\n\nレシピを考えています…`);
+  const typeText = state.selectedType !== 'おまかせ' ? `\n料理タイプ：${state.selectedType}` : '';
+  addBotMessage(`特売品を受け取りました！\n${items.map(i => `・${i}`).join('\n')}${ngText}${typeText}\n\nレシピを考えています…`);
 
+  await processRecipe(items);
+  setWaiting(false);
+}
+
+async function processRecipe(items) {
   const recentCooked = getRecentCooked();
-  const recipe = await getRecipe(items, recentCooked);
+  const exclude = [...(state.shown || []), ...recentCooked, ...state.recipeHistory.map(r => r.name)];
+  const recipe = await getRecipe(items, exclude);
   if (recipe) {
     state.shown = [recipe.name];
     state.lastRecipe = recipe.name;
     state.lastRecipeText = formatRecipe(recipe);
+
+    // 履歴に追加（重複防止用）
+    state.recipeHistory.push({ name: recipe.name, style: recipe.style || '', method: recipe.method || '' });
+    saveStorage();
+
     addBotMessage(formatRecipe(recipe));
 
     // 余り食材
     const leftover = await getLeftoverSuggestion(items, recipe.ingredients);
-    if (leftover && leftover.suggestions && leftover.suggestions.length > 0) {
+    if (leftover?.suggestions?.length > 0) {
       const suggText = leftover.suggestions.map(s => `・${s.type}｜${s.name}\n  ${s.desc}`).join('\n');
       addBotMessage(`余った食材の活用アイデア\n\n${suggText}`);
     }
 
     showQuickReplies(['✅ 作った', '⏭ 作らなかった', '🔄 別のレシピ', '⭐ お気に入り', '↩️ リセット']);
 
-    // レシピカウント＆10回でフィードバック促進
+    // 10回ごとにフィードバック促進
     state.recipeCount++;
     localStorage.setItem('recipeCount', state.recipeCount);
     if (state.recipeCount % 10 === 0) {
       setTimeout(() => {
-        addBotMessage(`🎉 レシピを${state.recipeCount}回提案しました！\nいつもご利用ありがとうございます。\n\nサービス改善のため、ぜひフィードバックをお聞かせください！`);
+        addBotMessage(`🎉 レシピを${state.recipeCount}回提案しました！\nいつもご利用ありがとうございます。\nぜひフィードバックをお聞かせください！`);
         const area = document.getElementById('chatArea');
         const div = document.createElement('div');
         div.className = 'quick-replies';
         const btn = document.createElement('button');
         btn.className = 'qr-btn';
-        btn.style.background = '#F4651E';
-        btn.style.color = 'white';
+        btn.style.cssText = 'background:#F4651E;color:white;border-color:#F4651E;';
         btn.textContent = '📝 フィードバックを送る';
         btn.onclick = () => window.open(FEEDBACK_URL, '_blank');
         div.appendChild(btn);
@@ -679,11 +806,11 @@ async function handleInput(text) {
   } else {
     addBotMessage('申し訳ありません、レシピの取得に失敗しました。もう一度試してみてください。');
   }
-
-  setWaiting(false);
 }
 
+// ============================================================
 // API呼び出し
+// ============================================================
 async function callClaude(prompt, maxTokens = 1000) {
   const res = await fetch('/api/claude', {
     method: 'POST',
@@ -696,8 +823,17 @@ async function callClaude(prompt, maxTokens = 1000) {
 }
 
 async function getRecipe(items, exclude) {
-  const excludeText = exclude.length > 0 ? `\n- 以下は除外: 【${exclude.join('、')}】` : '';
+  const excludeText = exclude.length > 0 ? `\n- 以下は除外（提案済み・最近作った）: 【${exclude.join('、')}】` : '';
   const ngText = state.ngFoods.length > 0 ? `\n- NG食材（絶対に使わない）: 【${state.ngFoods.join('、')}】` : '';
+  const typeText = state.selectedType !== 'おまかせ' ? `\n- 料理タイプ：${state.selectedType}を提案すること` : '';
+
+  // 直近の味付け・調理法を取得して偏り防止
+  const recentStyles = state.recipeHistory.slice(-3).map(r => r.style).filter(Boolean);
+  const recentMethods = state.recipeHistory.slice(-3).map(r => r.method).filter(Boolean);
+  const diversityText = recentStyles.length > 0
+    ? `\n- 直近の味付け系統【${recentStyles.join('、')}】と異なる味付けを優先\n- 直近の調理法【${recentMethods.join('、')}】と異なる調理法を優先`
+    : '';
+
   try {
     return await callClaude(`以下の特売食材を使った夕食レシピを1品提案してください。
 特売食材: ${items.join('、')}
@@ -706,10 +842,19 @@ async function getRecipe(items, exclude) {
 【重要なルール】
 - 入力された特売食材はできるだけ全部使うこと（最優先）
 - 特売食材＋家にある基本的な調味料で作れるレシピを優先
-- 特別な食材や珍しい調味料が必要なレシピは避ける${excludeText}${ngText}
+- 特別な食材や珍しい調味料が必要なレシピは避ける
+- 和洋中・様々なジャンルから提案すること${typeText}${excludeText}${ngText}${diversityText}
 
 必ずJSONのみで返してください（説明文なし）:
-{"name":"料理名","time":"調理時間","desc":"ポイント（50字以内）","ingredients":["材料1","材料2"],"steps":["手順1","手順2"]}`);
+{
+  "name": "料理名",
+  "time": "調理時間",
+  "desc": "ポイント（50字以内）",
+  "ingredients": ["材料1", "材料2"],
+  "steps": ["手順1", "手順2"],
+  "style": "味付け系統（例：甘辛、塩味、トマト系、など1語）",
+  "method": "調理法（例：炒める、煮る、焼く、など1語）"
+}`);
   } catch(e) { return null; }
 }
 
@@ -728,7 +873,9 @@ function formatRecipe(r) {
   return `【${r.name}】\n時間：${r.time}\n\n${r.desc}\n\n【材料】\n${r.ingredients.map(i => `・${i}`).join('\n')}\n\n【作り方】\n${r.steps.map((s,i) => `${i+1}. ${s}`).join('\n')}`;
 }
 
+// ============================================================
 // UI操作
+// ============================================================
 function addUserMessage(text, restore = false) {
   const area = document.getElementById('chatArea');
   const div = document.createElement('div');
@@ -751,6 +898,7 @@ function addBotMessage(text, restore = false) {
 }
 
 function showQuickReplies(labels) {
+  document.getElementById('quickReplies')?.remove();
   const area = document.getElementById('chatArea');
   const div = document.createElement('div');
   div.className = 'quick-replies';
@@ -761,7 +909,8 @@ function showQuickReplies(labels) {
     btn.textContent = label;
     btn.onclick = () => {
       document.getElementById('quickReplies')?.remove();
-      handleInput(label.replace(/^[^\s]+\s/, '').replace('✅ ', '').replace('⏭ ', '').replace('🔄 ', '').replace('↩️ ', ''));
+      const cmdMap = {'✅ 作った':'作った','⏭ 作らなかった':'作らなかった','🔄 別のレシピ':'別のレシピ','⭐ お気に入り':'お気に入り','↩️ リセット':'リセット'};
+      handleInput(cmdMap[label] || label);
     };
     div.appendChild(btn);
   });
@@ -771,7 +920,8 @@ function showQuickReplies(labels) {
 
 function setWaiting(val) {
   state.waiting = val;
-  document.getElementById('sendBtn').disabled = val;
+  const btn = document.getElementById('sendBtn');
+  if (btn) btn.disabled = val;
   if (val) showTyping();
   else removeTyping();
 }
@@ -799,13 +949,57 @@ function escHtml(t) {
   return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
 }
 
-// お気に入りモーダル
+// ============================================================
+// チャット履歴の保存・復元
+// ============================================================
+function saveChatHistory() {
+  const msgs = [...document.querySelectorAll('.msg')].slice(-50).map(el => ({
+    type: el.classList.contains('user') ? 'user' : 'bot',
+    text: el.querySelector('.bubble')?.innerText || ''
+  }));
+  save('chatHistory', msgs);
+  save('chatState', { items: state.items, shown: state.shown, lastRecipe: state.lastRecipe });
+}
+
+function restoreChat() {
+  const history = load('chatHistory', []);
+  const savedState = load('chatState', {});
+  if (history.length > 0) {
+    document.getElementById('welcome').style.display = 'none';
+    document.getElementById('inputArea').style.display = 'block';
+    history.forEach(msg => {
+      if (msg.type === 'user') addUserMessage(msg.text, true);
+      else addBotMessage(msg.text, true);
+    });
+    if (savedState.items) state.items = savedState.items;
+    if (savedState.shown) state.shown = savedState.shown;
+    if (savedState.lastRecipe) state.lastRecipe = savedState.lastRecipe;
+    if (state.lastRecipe) {
+      showQuickReplies(['✅ 作った', '⏭ 作らなかった', '🔄 別のレシピ', '⭐ お気に入り', '↩️ リセット']);
+    }
+    scrollBottom();
+  }
+}
+
+// ============================================================
+// 使い方
+// ============================================================
+function showHelp() {
+  document.getElementById('welcome').style.display = 'none';
+  document.getElementById('inputArea').style.display = 'block';
+  addBotMessage('📖 使い方ガイド\n\n【基本の使い方】\n1. 今日の特売品を入力して送信\n   例：鶏もも肉、大根、豆腐\n\n2. AIがレシピを1品提案します\n\n3. 作ったら「✅ 作った」をタップ\n   →1ヶ月同じレシピが出なくなります\n\n【便利な機能】\n🚫 NG食材：苦手な食材を登録して除外\n🔄 別のレシピ：違うレシピに変更\n↩️ リセット：食材を入力し直す\n🍱 余り食材：使わなかった食材の活用アイデアも自動提案\n追加 ○○：食材を追加して再提案\n\n準備ができたら特売品を入力してください！');
+  document.getElementById('inputBox').focus();
+}
+
+// ============================================================
+// お気に入り
+// ============================================================
 function openFavModal() {
-  const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+  const favorites = load('favorites', []);
   const list = document.getElementById('favList');
   list.innerHTML = '';
   if (favorites.length === 0) {
-    list.innerHTML = '<p style="font-size:13px;color:#888;text-align:center;padding:20px;">まだお気に入りはありません。<br>レシピ提案後に「⭐ お気に入り」を<br>タップして保存できます。</p>';
+    list.innerHTML = '<p style="font-size:13px;color:#888;text-align:center;padding:20px;">まだお気に入りはありません。<br>レシピ提案後に「⭐ お気に入り」をタップして保存できます。</p>';
   } else {
     favorites.slice().reverse().forEach((f, i) => {
       const idx = favorites.length - 1 - i;
@@ -822,21 +1016,18 @@ function openFavModal() {
   }
   document.getElementById('favModal').classList.add('open');
 }
-
-function closeFavModal() {
-  document.getElementById('favModal').classList.remove('open');
-}
-
+function closeFavModal() { document.getElementById('favModal').classList.remove('open'); }
 function deleteFav(idx) {
-  const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+  const favorites = load('favorites', []);
   favorites.splice(idx, 1);
-  localStorage.setItem('favorites', JSON.stringify(favorites));
+  save('favorites', favorites);
   openFavModal();
 }
 
-// NGモーダル
+// ============================================================
+// NG食材
+// ============================================================
 function openNgModal() {
-  const modal = document.getElementById('ngModal');
   const current = document.getElementById('ngCurrent');
   if (state.ngFoods.length > 0) {
     current.textContent = '現在：' + state.ngFoods.join('、');
@@ -845,13 +1036,9 @@ function openNgModal() {
     current.style.display = 'none';
   }
   document.getElementById('ngInput').value = state.ngFoods.join('、');
-  modal.classList.add('open');
+  document.getElementById('ngModal').classList.add('open');
 }
-
-function closeNgModal() {
-  document.getElementById('ngModal').classList.remove('open');
-}
-
+function closeNgModal() { document.getElementById('ngModal').classList.remove('open'); }
 function saveNg() {
   const val = document.getElementById('ngInput').value.trim();
   state.ngFoods = val ? val.split(/[\n、,，]+/).map(s => s.trim()).filter(s => s.length > 0) : [];
@@ -864,14 +1051,13 @@ function saveNg() {
   }
 }
 
-// クイックリプライのテキスト変換
-function qrText(label) {
-  const map = {'✅ 作った':'作った','⏭ 作らなかった':'作らなかった','🔄 別のレシピ':'別のレシピ','↩️ リセット':'リセット'};
-  return map[label] || label;
-}
-
-// ページ読み込み時に会話履歴を復元
-window.addEventListener('load', restoreChat);
+// ============================================================
+// 初期化
+// ============================================================
+window.addEventListener('load', () => {
+  showConcept();
+  restoreChat();
+});
 </script>
 </body>
 </html>
